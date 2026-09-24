@@ -18,14 +18,12 @@ crons = ["0 11-15 * * *"]
 # Holds the composed Frame between the schedule that writes it and the Board
 # that collects it. One key, overwritten each time.
 #
-# Before the first deploy:
-#   npx wrangler kv namespace create FRAMES
-#   npx wrangler kv namespace create FRAMES --preview
-# and paste the ids below. `wrangler dev` uses local storage and ignores them.
+# `wrangler dev` uses local storage and ignores these ids. If you ever need to
+# recreate them: npx wrangler kv namespace create FRAMES (and again --preview).
 [[kv_namespaces]]
 binding = "FRAMES"
-id = "TODO_RUN_WRANGLER_KV_NAMESPACE_CREATE"
-preview_id = "TODO_RUN_WRANGLER_KV_NAMESPACE_CREATE_PREVIEW"
+id = "b45e7c6bb4f44f30aa2252fdb36a2fab"
+preview_id = "0e3b3471ff9f40a1957c6a6e1de7ccf5"
 
 # Secrets, set with `npx wrangler secret put <NAME>`, never in this file:
 #   BOARD_SECRET          shared with the Board and nothing else
