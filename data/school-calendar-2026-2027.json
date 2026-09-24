@@ -1,0 +1,84 @@
+{
+  "_comment": [
+    "Bedrock School Calendar for 2026-2027, derived from SJUSD's official Student Calendar PDF.",
+    "This file is the AUTHORITY on Non-School Days. ParentSquare and MealViewer are",
+    "cross-checks, never the source of truth.",
+    "",
+    "ELEMENTARY ONLY. The district PDF's sidebar lists early-release blocks that apply to",
+    "SECONDARY schools only (14-17 Dec 2026, 24-26 May 2027). They are deliberately absent",
+    "from minimumDays: Trace runs a normal day on them. Reading the sidebar alone would put",
+    "four wrong early-release days on the Board.",
+    "",
+    "DO NOT derive holidays with a generic US-holiday library. SJUSD holds school on",
+    "Indigenous Peoples' Day (12 Oct 2026) and Cesar Chavez Day (31 Mar 2027). March 2027",
+    "contains no non-school days at all. Formula-based holidays would close school wrongly.",
+    "",
+    "Regenerate each August with: tools/extract-school-calendar.py <new.pdf>",
+    "See docs/adr/0003-bedrock-school-calendar.md for why this is hand-maintained data."
+  ],
+
+  "schoolYear": "2026-2027",
+  "source": "SJUSD 2026-2027 Student Calendar (official PDF)",
+  "derivedOn": "2026-09-24",
+  "timezone": "America/Los_Angeles",
+  "audience": "elementary",
+
+  "firstDay": "2026-08-06",
+  "lastDay": "2027-05-27",
+
+  "nonSchoolDays": {
+    "2026-09-07": "Labor Day",
+
+    "2026-09-28": "Fall recess",
+    "2026-09-29": "Fall recess",
+    "2026-09-30": "Fall recess",
+    "2026-10-01": "Fall recess",
+    "2026-10-02": "Fall recess",
+
+    "2026-11-11": "Veterans Day",
+
+    "2026-11-25": "Thanksgiving recess",
+    "2026-11-26": "Thanksgiving recess",
+    "2026-11-27": "Thanksgiving recess",
+
+    "2026-12-21": "New Year recess",
+    "2026-12-22": "New Year recess",
+    "2026-12-23": "New Year recess",
+    "2026-12-24": "New Year recess",
+    "2026-12-25": "New Year recess",
+    "2026-12-28": "New Year recess",
+    "2026-12-29": "New Year recess",
+    "2026-12-30": "New Year recess",
+    "2026-12-31": "New Year recess",
+    "2027-01-01": "New Year recess",
+
+    "2027-01-18": "Martin Luther King Jr. Day",
+
+    "2027-02-15": "Winter recess",
+    "2027-02-16": "Winter recess",
+    "2027-02-17": "Winter recess",
+    "2027-02-18": "Winter recess",
+    "2027-02-19": "Winter recess",
+
+    "2027-04-05": "Spring recess",
+    "2027-04-06": "Spring recess",
+    "2027-04-07": "Spring recess",
+    "2027-04-08": "Spring recess",
+    "2027-04-09": "Spring recess"
+  },
+
+  "minimumDays": {
+    "2026-10-26": "Out 2 hours early",
+    "2026-10-27": "Out 2 hours early",
+    "2026-10-28": "Out 2 hours early",
+    "2026-10-29": "Out 2 hours early",
+    "2026-10-30": "Out 2 hours early",
+
+    "2026-12-18": "Out 2 hours early",
+
+    "2027-03-11": "Out 2 hours early",
+    "2027-03-12": "Out 2 hours early",
+
+    "2027-05-27": "Last day; out 2 hours early"
+  }
+}
