@@ -6,10 +6,13 @@
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "test:watch": "vitest",
+    "test:goldens": "UPDATE_GOLDENS=1 vitest run",
+    "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.test.json"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20250109.0",
+    "@types/node": "^26.6.2",
     "typescript": "^5.7.3",
     "vitest": "^3.0.5",
     "wrangler": "^3.105.0"

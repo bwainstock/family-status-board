@@ -1,0 +1,13 @@
+/**
+ * The tests run on Node and may touch the filesystem — golden images have to
+ * live somewhere. `src` deliberately cannot: it is typechecked against
+ * Workers types only, so a stray `node:fs` import fails before it ever reaches
+ * a deploy.
+ */
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "types": ["@cloudflare/workers-types", "node"]
+  },
+  "include": ["src/**/*.ts", "test/**/*.ts"]
+}

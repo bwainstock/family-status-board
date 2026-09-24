@@ -1,0 +1,7 @@
+name = "status-board"
+main = "src/index.ts"
+compatibility_date = "2026-09-01"
+
+# The Board is the only consumer and it is on a home network, so there is no
+# custom domain here yet. `wrangler dev` serves the preview route locally.
+workers_dev = true
