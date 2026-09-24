@@ -9,14 +9,22 @@
 import { parseIcs, type IcsEvent } from "./ics.js";
 
 /**
- * Fetches and parses the feed, or returns null.
+ * Three outcomes, not two, because two of them need a human and one does not.
  *
- * Null covers every failure the same way — no URL configured, a network error,
- * a sign-in page returned with a 200 — because the Board's response to all of
- * them is identical: show what it already knows and leave the cell honest.
+ * A timeout is Tuesday. A feed that answers and refuses, or that was never
+ * configured, stays broken until someone goes and fixes it -- and that is the
+ * only case worth a mark in the Status Corner. A corner that lit up for every
+ * transient blip would be a corner the Caregiver learned to ignore, which costs
+ * more than the blip does.
  */
-export async function fetchEvents(icsUrl: string | undefined): Promise<IcsEvent[] | null> {
-  if (icsUrl === undefined || icsUrl === "") return null;
+export type EventsResult =
+  | { readonly kind: "events"; readonly events: IcsEvent[] }
+  | { readonly kind: "unavailable" }
+  | { readonly kind: "reauth-needed" };
+
+export async function fetchEvents(icsUrl: string | undefined): Promise<EventsResult> {
+  // Not configured is not a transient failure: nobody has set the feed up.
+  if (icsUrl === undefined || icsUrl === "") return { kind: "reauth-needed" };
 
   // Subscription URLs are commonly handed out as webcal://, which is the same
   // request over a different scheme name.
@@ -26,14 +34,21 @@ export async function fetchEvents(icsUrl: string | undefined): Promise<IcsEvent[
     const response = await fetch(url, { signal: AbortSignal.timeout(5000) });
     if (!response.ok) {
       console.warn(`parentsquare: ${response.status}`);
-      return null;
+      // 4xx is the feed telling us who we are; 5xx is the feed having a bad day.
+      return response.status < 500 ? { kind: "reauth-needed" } : { kind: "unavailable" };
     }
+
     const events = parseIcs(await response.text());
-    // A parse that finds nothing usually means an error page arrived with a
-    // 200 on it, which is how an expired subscription presents.
-    return events.length === 0 ? null : events;
+    // A parse that finds nothing usually means a sign-in page arrived with a
+    // 200 on it, which is how a revoked subscription actually presents.
+    return events.length === 0 ? { kind: "reauth-needed" } : { kind: "events", events };
   } catch (error) {
     console.warn(`parentsquare: ${error instanceof Error ? error.message : String(error)}`);
-    return null;
+    return { kind: "unavailable" };
   }
+}
+
+/** The events, or none. For callers that need the calendar, not the cause. */
+export function eventsOf(result: EventsResult): IcsEvent[] {
+  return result.kind === "events" ? result.events : [];
 }

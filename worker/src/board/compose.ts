@@ -16,10 +16,11 @@ import { weatherFor } from "../day/weather.js";
 import { entreeFor } from "../day/entree.js";
 import { allowedEvents } from "../day/events.js";
 import { countdownFor } from "../day/countdown.js";
+import { chargeReminderDue } from "../day/charge.js";
 import { fetchForecast } from "../sources/open-meteo.js";
 import { fetchMenu } from "../sources/mealviewer.js";
-import { fetchEvents } from "../sources/parentsquare.js";
-import type { DayModel } from "../day/model.js";
+import { fetchEvents, eventsOf } from "../sources/parentsquare.js";
+import type { DayModel, StatusFlag } from "../day/model.js";
 
 export interface Sources {
   readonly PARENTSQUARE_ICS_URL?: string;
@@ -37,6 +38,12 @@ export async function composeDay(date: string, sources: Sources): Promise<DayMod
     fetchEvents(sources.PARENTSQUARE_ICS_URL),
   ]);
 
+  // Marks are for the Caregiver and describe the Board, not the day. Each one
+  // is something a human has to go and do; nothing here changes a cell.
+  const status: StatusFlag[] = [...school.flags];
+  if (events.kind === "reauth-needed") status.push("reauth-needed");
+  if (chargeReminderDue(date)) status.push("charge-reminder");
+
   return {
     date,
     weather: weatherFor(forecast, date),
@@ -44,10 +51,10 @@ export async function composeDay(date: string, sources: Sources): Promise<DayMod
     school: school.state,
     countdown: countdownFor(
       date,
-      allowedEvents(events ?? []),
+      allowedEvents(eventsOf(events)),
       SCHOOL_CALENDAR,
       weatherFor(forecast, addDays(date, 1)),
     ),
-    status: school.flags,
+    status,
   };
 }

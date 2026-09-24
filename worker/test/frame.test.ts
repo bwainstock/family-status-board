@@ -10,7 +10,7 @@ import {
   SCHOOL_GLYPHS,
 } from "../src/frame/render.js";
 import type { DayModel } from "../src/day/model.js";
-import { WEATHER_GLYPH_NAMES } from "../src/day/model.js";
+import { WEATHER_GLYPH_NAMES, STATUS_FLAGS } from "../src/day/model.js";
 import { ENTREE_TABLE, UNMAPPED_ENTREE } from "../src/day/entree.js";
 import { EVENT_ALLOWLIST } from "../src/day/events.js";
 import { NON_SCHOOL_CAPTION } from "../src/day/countdown.js";
@@ -32,16 +32,7 @@ import {
   valueBox,
   type Rect,
 } from "../src/frame/layout.js";
-
-function countInk(frame: Framebuffer, region: Rect): number {
-  let count = 0;
-  for (let y = region.y; y < region.y + region.height; y++) {
-    for (let x = region.x; x < region.x + region.width; x++) {
-      if (frame.getPixel(x, y)) count++;
-    }
-  }
-  return count;
-}
+import { countInk } from "./support/ink.js";
 
 function day(overrides: Partial<DayModel> = {}): DayModel {
   return {
@@ -53,6 +44,16 @@ function day(overrides: Partial<DayModel> = {}): DayModel {
     status: [],
     ...overrides,
   };
+}
+
+/** A day where every source answered. The baseline degradation is measured against. */
+function answered(overrides: Partial<DayModel> = {}): DayModel {
+  return day({
+    weather: { glyph: "partly-cloudy", tempF: 72 },
+    entree: { glyph: "pizza", caption: "Pizza" },
+    countdown: { kind: "sleeps", sleeps: 4, glyph: "no-school", caption: NON_SCHOOL_CAPTION },
+    ...overrides,
+  });
 }
 
 /**
@@ -312,16 +313,7 @@ describe("Frame rendering", () => {
     });
 
     it("draws a full school day with every cell answered", () => {
-      expectGolden(
-        "full-school-day",
-        renderFrame(
-          day({
-            weather: { glyph: "partly-cloudy", tempF: 72 },
-            entree: { glyph: "pizza", caption: "Pizza" },
-            countdown: { kind: "sleeps", sleeps: 4, glyph: "no-school", caption: NON_SCHOOL_CAPTION },
-          }),
-        ),
-      );
+      expectGolden("full-school-day", renderFrame(answered()));
     });
 
     it("draws the day of the event itself", () => {
@@ -406,6 +398,35 @@ describe("Frame rendering", () => {
       expectGolden(
         "school-closure-disagreement",
         renderFrame(day({ status: ["stale", "closure-disagreement"] })),
+      );
+    });
+
+    it("draws each mark on its own, so each one is recognisable alone", () => {
+      // The Caregiver will usually see exactly one of these, and has to know
+      // which one it is without a second one beside it to compare against.
+      for (const flag of STATUS_FLAGS) {
+        expectGolden(`status-${flag}`, renderFrame(answered({ status: [flag] })));
+      }
+    });
+
+    it("draws every mark at once, which is the crowded case", () => {
+      expectGolden("status-all", renderFrame(answered({ status: [...STATUS_FLAGS] })));
+    });
+
+    it("draws a day with one source missing, which must still look like a day", () => {
+      // Side by side with full-school-day: one cell turns into a question
+      // mark and nothing else moves.
+      expectGolden("degraded-one-cell", renderFrame(answered({ weather: null })));
+    });
+
+    it("draws a day with nothing but the calendar left", () => {
+      // Everything fetched is gone. The date and the school state come from
+      // the checked-in calendar, which is exactly why they survive.
+      expectGolden(
+        "degraded-every-source-down",
+        renderFrame(
+          answered({ weather: null, entree: null, countdown: null, status: ["reauth-needed"] }),
+        ),
       );
     });
 
