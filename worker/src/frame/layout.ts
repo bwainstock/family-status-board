@@ -135,3 +135,6 @@ export const NON_SCHOOL_SIDE: Rect = {
 };
 
 export const NON_SCHOOL_GLYPH_SIZE = 128;
+
+/** Glyph inset from the top of the inverted slab, leaving room for the reason. */
+export const NON_SCHOOL_GLYPH_TOP = 16;

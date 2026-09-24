@@ -29,6 +29,7 @@ import {
   DATE_BOX,
   NON_SCHOOL_MAIN,
   NON_SCHOOL_GLYPH_SIZE,
+  NON_SCHOOL_GLYPH_TOP,
   NON_SCHOOL_SIDE,
   STATUS_SLOTS,
   TOP_BAR,
@@ -53,7 +54,8 @@ export function renderFrame(day: DayModel): Framebuffer {
   drawTopBar(frame, day);
 
   if (day.school.kind === "no-school") {
-    drawRule(frame, NON_SCHOOL_SIDE);
+    // No rule: the edge of the inverted slab already divides the panel, and a
+    // hairline drawn against solid black would only be a smudge.
     drawNonSchool(frame, day.school.reason);
     drawCell(frame, NON_SCHOOL_SIDE, weatherCell(day.weather));
   } else {
@@ -153,17 +155,39 @@ export function schoolCell(state: SchoolDay): CellContent {
  * Issue #8 refines this arrangement; what matters here is that the third school
  * state looks like the different kind of day it is.
  */
+/**
+ * The Non-School Day, which the domain calls the most load-bearing fact the
+ * Board knows, so it gets the strongest signal a 1-bit panel has: the wide
+ * area is inverted and the house and the reason are knocked out of it.
+ *
+ * From across a room no Glyph resolves, only light and dark. A school day is a
+ * light panel with four columns; a Non-School Day is a dark slab that runs up
+ * into the date bar. That is a difference the Viewer can read before she has
+ * focused on anything.
+ */
 function drawNonSchool(frame: Framebuffer, reason: string): void {
+  frame.fillRect(
+    NON_SCHOOL_MAIN.x,
+    NON_SCHOOL_MAIN.y,
+    NON_SCHOOL_MAIN.width,
+    NON_SCHOOL_MAIN.height,
+    true,
+  );
+
   const glyph = bitmap("no-school@128");
-  const top = NON_SCHOOL_MAIN.y + 16;
-  frame.blit(glyph, NON_SCHOOL_MAIN.x + (NON_SCHOOL_MAIN.width - glyph.width) / 2, top);
-  drawTextIn(frame, nonSchoolReasonBox(), reason, { role: "value", align: "center" });
+  frame.blit(
+    glyph,
+    NON_SCHOOL_MAIN.x + (NON_SCHOOL_MAIN.width - glyph.width) / 2,
+    NON_SCHOOL_MAIN.y + NON_SCHOOL_GLYPH_TOP,
+    false,
+  );
+  drawTextIn(frame, nonSchoolReasonBox(), reason, { role: "value", align: "center", ink: false });
 }
 
 export function nonSchoolReasonBox(): Rect {
   return {
     x: NON_SCHOOL_MAIN.x,
-    y: NON_SCHOOL_MAIN.y + 16 + NON_SCHOOL_GLYPH_SIZE + 6,
+    y: NON_SCHOOL_MAIN.y + NON_SCHOOL_GLYPH_TOP + NON_SCHOOL_GLYPH_SIZE + 6,
     width: NON_SCHOOL_MAIN.width,
     height: 44,
   };

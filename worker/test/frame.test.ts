@@ -19,6 +19,8 @@ import {
   CELLS,
   CELL_ORDER,
   DATE_BOX,
+  NON_SCHOOL_MAIN,
+  NON_SCHOOL_SIDE,
   TOP_BAR,
   captionBox,
   glyphBox,
@@ -132,6 +134,48 @@ describe("Frame rendering", () => {
     });
   });
 
+  describe("the Non-School Day layout", () => {
+    const holiday = day({ date: "2026-11-25", school: { kind: "no-school", reason: "Thanksgiving recess" } });
+
+    function inkFraction(frame: Framebuffer, region: Rect): number {
+      return countInk(frame, region) / (region.width * region.height);
+    }
+
+    it("reads as a different kind of day before any Glyph is read", () => {
+      // The acceptance criterion is "recognisable at a glance from across a
+      // room", and at that distance no Glyph resolves -- only light and dark
+      // do. So the check is on ink mass, not on any particular mark: the wide
+      // area is mostly dark on a Non-School Day and mostly light on a school
+      // day. That inversion is legible peripherally, which is the point.
+      const schoolDayInk = inkFraction(renderFrame(day()), NON_SCHOOL_MAIN);
+      const holidayInk = inkFraction(renderFrame(holiday), NON_SCHOOL_MAIN);
+
+      expect(schoolDayInk).toBeLessThan(0.2);
+      expect(holidayInk).toBeGreaterThan(0.8);
+    });
+
+    it("still shows the date, which the Viewer is learning to recognise", () => {
+      const frame = renderFrame(holiday);
+      expect(countInk(frame, DATE_BOX)).toBeGreaterThan(0);
+    });
+
+    it("still shows the weather, which is true whether or not there is school", () => {
+      const withWeather = renderFrame({ ...holiday, weather: { glyph: "rain", tempF: 48 } });
+      const withoutWeather = renderFrame(holiday);
+      // Different marks in the side cell: the weather is being drawn, not
+      // ignored because it is a holiday.
+      expect(countInk(withWeather, NON_SCHOOL_SIDE)).not.toBe(countInk(withoutWeather, NON_SCHOOL_SIDE));
+    });
+
+    it("does not offer an Entree, because there is no lunch to have", () => {
+      // An empty Lunch cell would be a question the Board cannot answer. The
+      // honest move is not to ask it.
+      const frame = renderFrame({ ...holiday, entree: { glyph: "pizza", caption: "Pizza" } });
+      const ignoring = renderFrame(holiday);
+      expect(frame.bytes).toEqual(ignoring.bytes);
+    });
+  });
+
   describe("the Weather and Entree cells", () => {
     it("gives every what-to-wear Glyph its own Caption", () => {
       const captions = WEATHER_GLYPH_NAMES.map((glyph) => weatherCell({ glyph, tempF: 70 }).caption);
@@ -196,6 +240,32 @@ describe("Frame rendering", () => {
       expectGolden(
         "skeleton-non-school-day",
         renderFrame(day({ date: "2026-11-25", school: { kind: "no-school", reason: "Thanksgiving recess" } })),
+      );
+    });
+
+    it("draws a Non-School Day with the weather it still makes sense to show", () => {
+      expectGolden(
+        "non-school-with-weather",
+        renderFrame(
+          day({
+            date: "2027-01-18",
+            school: { kind: "no-school", reason: "Martin Luther King Jr. Day" },
+            weather: { glyph: "rain", tempF: 48 },
+          }),
+        ),
+      );
+    });
+
+    it("draws a weekend, which is the Non-School Day she sees most often", () => {
+      expectGolden(
+        "non-school-weekend",
+        renderFrame(
+          day({
+            date: "2026-09-26",
+            school: { kind: "no-school", reason: "Weekend" },
+            weather: { glyph: "sun", tempF: 91 },
+          }),
+        ),
       );
     });
 
