@@ -26,17 +26,29 @@ export const TOP_BAR: Rect = { x: 0, y: 0, width: WIDTH, height: 56 };
 export const DATE_BOX: Rect = { x: 14, y: 8, width: 560, height: 40 };
 
 /**
- * Three status slots at the right of the bar. Empty when nothing needs
- * attention, which is the point: the corner's presence is itself the signal.
+ * Four status slots at the right of the bar — one per StatusFlag, so a day
+ * where everything has gone wrong at once still has somewhere to put the last
+ * mark. Empty when nothing needs attention, which is the point: the corner's
+ * presence is itself the signal.
+ *
+ * Four slots reach left to x=632, which still clears DATE_BOX at x=574.
  */
 export const STATUS_SLOT_SIZE = 32;
 export const STATUS_SLOT_GAP = 6;
-export const STATUS_SLOTS: readonly Rect[] = [0, 1, 2].map((i) => ({
-  x: WIDTH - 14 - (3 - i) * STATUS_SLOT_SIZE - (2 - i) * STATUS_SLOT_GAP,
-  y: (TOP_BAR.height - STATUS_SLOT_SIZE) / 2,
-  width: STATUS_SLOT_SIZE,
-  height: STATUS_SLOT_SIZE,
-}));
+export const STATUS_SLOT_COUNT = 4;
+export const STATUS_SLOTS: readonly Rect[] = Array.from(
+  { length: STATUS_SLOT_COUNT },
+  (_unused, i) => ({
+    x:
+      WIDTH -
+      14 -
+      (STATUS_SLOT_COUNT - i) * STATUS_SLOT_SIZE -
+      (STATUS_SLOT_COUNT - 1 - i) * STATUS_SLOT_GAP,
+    y: (TOP_BAR.height - STATUS_SLOT_SIZE) / 2,
+    width: STATUS_SLOT_SIZE,
+    height: STATUS_SLOT_SIZE,
+  }),
+);
 
 export const CELL_ROW_TOP = TOP_BAR.height;
 export const CELL_ROW_HEIGHT = HEIGHT - TOP_BAR.height; // 216

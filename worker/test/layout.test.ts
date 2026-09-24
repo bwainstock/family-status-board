@@ -10,12 +10,14 @@ import {
   NON_SCHOOL_MAIN,
   NON_SCHOOL_SIDE,
   STATUS_SLOTS,
+  STATUS_SLOT_COUNT,
   TOP_BAR,
   captionBox,
   glyphBox,
   valueBox,
   type Rect,
 } from "../src/frame/layout.js";
+import { STATUS_FLAGS } from "../src/day/model.js";
 
 function contains(outer: Rect, inner: Rect): boolean {
   return (
@@ -74,8 +76,10 @@ describe("Frame layout", () => {
     expect(DATE_BOX.x + DATE_BOX.width).toBeLessThanOrEqual(STATUS_SLOTS[0]!.x);
   });
 
-  it("gives the status corner three non-overlapping slots at the right edge", () => {
-    expect(STATUS_SLOTS).toHaveLength(3);
+  it("gives the status corner one non-overlapping slot per flag the Board can raise", () => {
+    // Fewer slots than flags and a bad day silently loses its last mark.
+    expect(STATUS_SLOT_COUNT).toBe(STATUS_FLAGS.length);
+    expect(STATUS_SLOTS).toHaveLength(STATUS_SLOT_COUNT);
     for (let i = 1; i < STATUS_SLOTS.length; i++) {
       const previous = STATUS_SLOTS[i - 1]!;
       expect(STATUS_SLOTS[i]!.x).toBeGreaterThanOrEqual(previous.x + previous.width);

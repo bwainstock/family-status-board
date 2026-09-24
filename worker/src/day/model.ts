@@ -30,7 +30,18 @@ export type EntreeGlyph =
 /** What a countdown is counting toward. */
 export type EventGlyph = "no-school" | "party" | "dress-up" | "book" | "sports" | "star";
 
-export type StatusFlag = "stale" | "reauth-needed" | "charge-reminder";
+/**
+ * Small marks in the Status Corner, read by the Caregiver and not the Viewer.
+ *
+ * `closure-disagreement` is the odd one out: it reports that a live source
+ * claimed the school was shut on a day the checked-in calendar calls a school
+ * day. Per ADR 0003 the calendar still wins, so the Frame is unchanged — but a
+ * disagreement about the Board's most load-bearing fact is worth a mark rather
+ * than being silently swallowed.
+ */
+export const STATUS_FLAGS = ["stale", "reauth-needed", "charge-reminder", "closure-disagreement"] as const;
+
+export type StatusFlag = (typeof STATUS_FLAGS)[number];
 
 /**
  * Three states, not a boolean. A Minimum Day has school and has an Entrée; it

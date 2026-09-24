@@ -9,6 +9,7 @@
 
 import { renderFrame } from "./frame/render.js";
 import { localDate, isIsoDate } from "./day/clock.js";
+import { resolveSchool } from "./day/school.js";
 import type { DayModel } from "./day/model.js";
 import { encodePng1Bit } from "./preview/png.js";
 import { WIDTH, HEIGHT } from "./framebuffer.js";
@@ -52,7 +53,7 @@ function previewImage(url: URL): Response {
   const date = requestedDate(url);
   if (typeof date !== "string") return new Response(date.error, { status: 400 });
 
-  const frame = renderFrame(placeholderDay(date));
+  const frame = renderFrame(previewDay(date));
   const png = encodePng1Bit(frame.bytes, WIDTH, HEIGHT);
 
   return new Response(png, {
@@ -89,9 +90,21 @@ function previewPage(url: URL): Response {
   });
 }
 
-/** Stands in until the sources are wired up. */
-function placeholderDay(date: string): DayModel {
-  return { date, weather: null, entree: null, school: { kind: "school" }, countdown: null, status: [] };
+/**
+ * Stands in until the live sources are wired up. The school state is already
+ * real — it comes from the checked-in calendar — so the preview can be pointed
+ * at Thanksgiving or a Minimum Day and show the genuine article.
+ */
+function previewDay(date: string): DayModel {
+  const school = resolveSchool(date);
+  return {
+    date,
+    weather: null,
+    entree: null,
+    school: school.state,
+    countdown: null,
+    status: school.flags,
+  };
 }
 
 function escapeHtml(value: string): string {

@@ -59,9 +59,13 @@ FONT_ROLES: Dict[str, tuple[int, str]] = {
 # is 32px.
 GLYPH_SIZES: Dict[str, List[int]] = {
     "unknown": [96],
+    "school": [96],
+    "minimum-day": [96],
+    "no-school": [96, 128],
     "stale": [32],
     "reauth-needed": [32],
     "charge-reminder": [32],
+    "closure-disagreement": [32],
 }
 
 
