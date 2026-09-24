@@ -1,12 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { composeDay } from "../src/board/compose.js";
-import { fetchEvents } from "../src/sources/parentsquare.js";
+import { fetchEvents, eventsOf } from "../src/sources/parentsquare.js";
 import { chargeReminderDue } from "../src/day/charge.js";
+import { claimedClosures } from "../src/day/events.js";
 import { renderFrame } from "../src/frame/render.js";
 import { FRAME_BYTES } from "../src/framebuffer.js";
 import { CELLS, glyphBox } from "../src/frame/layout.js";
 import { countInk } from "./support/ink.js";
-import { fixture } from "./support/fixtures.js";
+import { fixture, fixtureText } from "./support/fixtures.js";
 import type { DayModel } from "../src/day/model.js";
 
 const DATE = "2026-09-24";
@@ -30,7 +31,7 @@ function serveExcept(down: readonly Source[]): void {
     if (down.includes(source)) throw new Error(`${source} is down`);
 
     if (source === "parentsquare") {
-      return new Response(fixture("parentsquare.ics"), { headers: { "content-type": "text/calendar" } });
+      return new Response(fixtureText("parentsquare.ics"), { headers: { "content-type": "text/calendar" } });
     }
     const name = source === "open-meteo" ? "open-meteo-clear" : "mealviewer-normal";
     return new Response(JSON.stringify(fixture(name)), { headers: { "content-type": "application/json" } });
@@ -163,5 +164,79 @@ describe("the Status Corner", () => {
     serveExcept([]);
     const day = await composeDay("2026-10-01", { PARENTSQUARE_ICS_URL: FEED });
     expect(day.status).toContain("charge-reminder");
+  });
+});
+
+/**
+ * Per ADR 0003 the checked-in calendar decides whether there is school, and
+ * nothing fetched can overrule it. But a closure added mid-year is precisely
+ * what the table cannot know, so a live source claiming one is surfaced rather
+ * than resolved -- and, crucially, rather than dropped.
+ */
+describe("a live source disagreeing about a closure", () => {
+  beforeEach(() => vi.spyOn(console, "warn").mockImplementation(() => {}));
+  afterEach(() => vi.unstubAllGlobals());
+
+  /**
+   * The genuine recorded `NO SCHOOL!` payload, moved onto a date the
+   * checked-in calendar calls an ordinary school day. That relabelling is the
+   * scenario: a closure added mid-year, which no published calendar predicted
+   * and which the table therefore cannot have.
+   */
+  function serveClosureClaim(): void {
+    serveExcept([]);
+    const inner = globalThis.fetch;
+    const moved = JSON.parse(
+      JSON.stringify(fixture("mealviewer-no-school")).replaceAll("2026-09-28", DATE),
+    ) as unknown;
+    vi.stubGlobal("fetch", async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input instanceof Request ? input.url : input);
+      if (!url.includes("mealviewer")) return inner(input as RequestInfo, init);
+      return new Response(JSON.stringify(moved), { headers: { "content-type": "application/json" } });
+    });
+  }
+
+  it("marks the corner, and is reachable from real composition", async () => {
+    // The regression this exists for: resolveSchool has always accepted the
+    // signal, but nothing was passing it, so the mark could only be produced
+    // by a hand-built DayModel in a test.
+    serveClosureClaim();
+    const day = await composeDay(DATE, { PARENTSQUARE_ICS_URL: FEED });
+    expect(day.status).toContain("closure-disagreement");
+  });
+
+  it("still shows the school day the calendar says it is", async () => {
+    // Surfaced, not obeyed. The Viewer sees a normal school day.
+    serveClosureClaim();
+    const day = await composeDay("2026-09-24", { PARENTSQUARE_ICS_URL: FEED });
+    expect(day.school.kind).toBe("school");
+  });
+
+  it("hears the events feed claim a closure too", () => {
+    expect(
+      claimedClosures([
+        { uid: "a@school", date: "2026-11-03", summary: "NO SCHOOL - Emergency closure" },
+        { uid: "b@school", date: "2026-11-04", summary: "Art Night" },
+      ]),
+    ).toEqual(new Set(["2026-11-03"]));
+  });
+
+  it("reads the recorded feed's own closure entry without inventing the rest", async () => {
+    // "NO SCHOOL * 9/28 - 10/02" carries its range in prose. Only the start
+    // date is real; parsing the rest out of free text is how a Board starts
+    // inventing closures.
+    serveExcept([]);
+    const claimed = claimedClosures(eventsOf(await fetchEvents(FEED)));
+    expect(claimed.has("2026-09-28")).toBe(true);
+    expect(claimed.has("2026-09-30")).toBe(false);
+  });
+
+  it("says nothing when the feed and the calendar agree", async () => {
+    // 2026-09-28 is the first day of fall recess in the checked-in calendar,
+    // and the feed says so too. Agreement is not a disagreement.
+    serveExcept([]);
+    const day = await composeDay("2026-09-28", { PARENTSQUARE_ICS_URL: FEED });
+    expect(day.school.kind).toBe("no-school");
+    expect(day.status).not.toContain("closure-disagreement");
   });
 });

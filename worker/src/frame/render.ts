@@ -187,13 +187,6 @@ export function schoolCell(state: SchoolDay): CellContent {
 }
 
 /**
- * The Non-School Day statement. The Glyph carries the fact for the Viewer; the
- * reason underneath is the district's own wording, for the Caregiver.
- *
- * Issue #8 refines this arrangement; what matters here is that the third school
- * state looks like the different kind of day it is.
- */
-/**
  * The Non-School Day, which the domain calls the most load-bearing fact the
  * Board knows, so it gets the strongest signal a 1-bit panel has: the wide
  * area is inverted and the house and the reason are knocked out of it.

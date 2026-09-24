@@ -13,7 +13,7 @@ import { renderFrame } from "../src/frame/render.js";
 import { FRAME_BYTES } from "../src/framebuffer.js";
 import { localDate } from "../src/day/clock.js";
 import { MemoryKv } from "./support/kv.js";
-import { fixture } from "./support/fixtures.js";
+import { fixture, fixtureText } from "./support/fixtures.js";
 import type { DayModel } from "../src/day/model.js";
 
 const SECRET = "correct-horse-battery-staple";
@@ -43,7 +43,7 @@ function serveRecordings(): void {
   vi.stubGlobal("fetch", async (input: RequestInfo | URL) => {
     const url = String(input instanceof Request ? input.url : input);
     if (url.includes("parentsquare")) {
-      return new Response(fixture("parentsquare.ics"), { headers: { "content-type": "text/calendar" } });
+      return new Response(fixtureText("parentsquare.ics"), { headers: { "content-type": "text/calendar" } });
     }
     const name = url.includes("open-meteo") ? "open-meteo-clear" : "mealviewer-normal";
     return new Response(JSON.stringify(fixture(name)), {

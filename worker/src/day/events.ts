@@ -82,3 +82,24 @@ export function allowedEvents(events: readonly IcsEvent[]): EventFact[] {
     })
     .sort((a, b) => a.date.localeCompare(b.date));
 }
+
+/**
+ * Dates on which the feed says there is no school.
+ *
+ * Per ADR 0003 the checked-in calendar still decides, and these never reach a
+ * cell. They exist so that a closure the district added mid-year — which no
+ * published calendar predicted, and which the table therefore cannot know —
+ * shows up as a disagreement in the Status Corner instead of being dropped on
+ * the floor by the allowlist.
+ *
+ * Only the start date is read. The summaries carry ranges in free text
+ * ("NO SCHOOL * 9/28 - 10/02") and parsing prose into dates is how a Board
+ * starts inventing closures.
+ */
+export function claimedClosures(events: readonly IcsEvent[]): ReadonlySet<string> {
+  const claimed = new Set<string>();
+  for (const event of events) {
+    if (/^\s*no school\b/i.test(event.summary)) claimed.add(event.date);
+  }
+  return claimed;
+}

@@ -67,6 +67,27 @@ describe("parseIcs", () => {
         expect(event.date, event.summary).toMatch(/^\d{4}-\d{2}-\d{2}$/);
       }
     });
+
+    it("reads the recording's own stamps, not just the ones invented above", () => {
+      // The cases above are hand-built so they can cover encodings the feed
+      // does not happen to carry today. This one pins the encodings it really
+      // does carry, so a parser that only satisfies the synthetic cases is
+      // caught the moment the upstream is re-recorded.
+      const byDate = new Map(parseIcs(FEED).map((event) => [event.summary, event.date]));
+      // DTSTART;VALUE=DATE:20260928
+      expect(byDate.get("NO SCHOOL * 9/28 - 10/02")).toBe("2026-09-28");
+      // DTSTART;TZID=America/Los_Angeles:20261006T084500
+      expect(byDate.get("Los Dichos book Training /B10")).toBe("2026-10-06");
+    });
+
+    it("leaves no encoding in the recording unexercised", () => {
+      // If the feed starts writing a form nothing above covers, that is a new
+      // trap and not a passing suite.
+      const encodings = new Set(
+        [...FEED.matchAll(/^DTSTART([^:]*):/gm)].map(([, params]) => params ?? ""),
+      );
+      expect(encodings).toEqual(new Set(["", ";VALUE=DATE", ";TZID=America/Los_Angeles"]));
+    });
   });
 
   describe("the structure of the feed itself", () => {

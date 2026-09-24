@@ -13,8 +13,8 @@ import { addDays } from "../day/clock.js";
 import { resolveSchool } from "../day/school.js";
 import { SCHOOL_CALENDAR } from "../day/school-calendar.js";
 import { weatherFor } from "../day/weather.js";
-import { entreeFor } from "../day/entree.js";
-import { allowedEvents } from "../day/events.js";
+import { entreeFor, readMenu } from "../day/entree.js";
+import { allowedEvents, claimedClosures } from "../day/events.js";
 import { countdownFor } from "../day/countdown.js";
 import { chargeReminderDue } from "../day/charge.js";
 import { fetchForecast } from "../sources/open-meteo.js";
@@ -27,16 +27,27 @@ export interface Sources {
 }
 
 export async function composeDay(date: string, sources: Sources): Promise<DayModel> {
-  const school = resolveSchool(date);
+  // The calendar needs nothing fetched (ADR 0003), so it can be asked first —
+  // which is what lets the Entree lookup be skipped entirely on a day there is
+  // no school. Asked again below, once the live sources have had their say.
+  const fromCalendar = resolveSchool(date);
 
   // All three at once. They do not depend on each other, and the Board is
   // waiting on the slowest of them either way.
   const [forecast, menu, events] = await Promise.all([
     fetchForecast(),
-    // No lunch to look up on a day there is no school.
-    school.state.kind === "no-school" ? Promise.resolve(null) : fetchMenu(date),
+    fromCalendar.state.kind === "no-school" ? Promise.resolve(null) : fetchMenu(date),
     fetchEvents(sources.PARENTSQUARE_ICS_URL),
   ]);
+
+  // Both live sources get to claim a closure, and neither gets to cause one.
+  // Per ADR 0003 the checked-in calendar still decides; the disagreement is
+  // surfaced because a mid-year closure is exactly what the table cannot know,
+  // and swallowing it would make the Board confidently wrong on the one fact
+  // it most needs to be right about.
+  const liveClosureClaim =
+    readMenu(menu, date).kind === "closure-claim" || claimedClosures(eventsOf(events)).has(date);
+  const school = resolveSchool(date, { liveClosureClaim });
 
   // Marks are for the Caregiver and describe the Board, not the day. Each one
   // is something a human has to go and do; nothing here changes a cell.
