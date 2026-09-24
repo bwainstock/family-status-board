@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { composeDay } from "../src/board/compose.js";
 import { fetchEvents, eventsOf } from "../src/sources/parentsquare.js";
 import { chargeReminderDue } from "../src/day/charge.js";
-import { claimedClosures } from "../src/day/events.js";
+import { claimedClosures } from "../src/day/kid-events.js";
 import { renderFrame } from "../src/frame/render.js";
 import { FRAME_BYTES } from "../src/framebuffer.js";
 import { CELLS, glyphBox } from "../src/frame/layout.js";
@@ -64,14 +64,14 @@ describe("one broken source costs one cell", () => {
     const day = await compose(["mealviewer"]);
     expect(day.entree).toBeNull();
     expect(day.weather).not.toBeNull();
-    expect(day.countdown).not.toBeNull();
+    expect(day.sleeps).not.toBeNull();
   });
 
   it("loses the events and still counts toward the checked-in calendar", async () => {
     // Per ADR 0003 the calendar is bedrock and is not fetched. A dead feed
-    // costs the events it would have added, not the countdown itself.
+    // costs the events it would have added, not the sleeps itself.
     const day = await compose(["parentsquare"]);
-    expect(day.countdown).not.toBeNull();
+    expect(day.sleeps).not.toBeNull();
     expect(day.weather).not.toBeNull();
   });
 
@@ -90,7 +90,7 @@ describe("one broken source costs one cell", () => {
     // A blank cell would be invisible: she would see three facts and not know
     // a fourth was missing. Every cell draws something, always.
     const dark = renderFrame(await compose(["open-meteo", "mealviewer", "parentsquare"]));
-    for (const name of ["weather", "entree", "school", "countdown"] as const) {
+    for (const name of ["weather", "entree", "school", "sleeps"] as const) {
       expect(countInk(dark, glyphBox(CELLS[name])), name).toBeGreaterThan(0);
     }
   });

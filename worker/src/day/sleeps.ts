@@ -13,13 +13,14 @@
 
 import { nightsBetween } from "./clock.js";
 import { SCHOOL_CALENDAR, type SchoolCalendar } from "./school-calendar.js";
-import type { EventFact } from "./events.js";
-import type { Countdown, EventGlyph, WeatherFact } from "./model.js";
+import type { KidRelevantEvent } from "./kid-events.js";
+import type { Sleeps, KidEventGlyph, WeatherFact } from "./model.js";
 
-export interface CountdownTarget {
+export interface SleepsTarget {
   readonly date: string;
-  readonly sleeps: number;
-  readonly glyph: EventGlyph;
+  /** The count itself. Sleeps are nights, which is why this is not "days". */
+  readonly nights: number;
+  readonly glyph: KidEventGlyph;
   readonly caption: string;
 }
 
@@ -47,22 +48,22 @@ export const NON_SCHOOL_CAPTION = "No school";
  */
 export function nextTarget(
   today: string,
-  events: readonly EventFact[] = [],
+  events: readonly KidRelevantEvent[] = [],
   calendar: SchoolCalendar = SCHOOL_CALENDAR,
-): CountdownTarget | null {
-  const candidates: CountdownTarget[] = [];
+): SleepsTarget | null {
+  const candidates: SleepsTarget[] = [];
 
   for (const event of events) {
-    const sleeps = nightsBetween(today, event.date);
-    if (sleeps >= 0) {
-      candidates.push({ date: event.date, sleeps, glyph: event.glyph, caption: event.caption });
+    const nights = nightsBetween(today, event.date);
+    if (nights >= 0) {
+      candidates.push({ date: event.date, nights, glyph: event.glyph, caption: event.caption });
     }
   }
 
   for (const date of Object.keys(calendar.nonSchoolDays)) {
-    const sleeps = nightsBetween(today, date);
-    if (sleeps >= 0) {
-      candidates.push({ date, sleeps, glyph: "no-school", caption: NON_SCHOOL_CAPTION });
+    const nights = nightsBetween(today, date);
+    if (nights >= 0) {
+      candidates.push({ date, nights, glyph: "no-school", caption: NON_SCHOOL_CAPTION });
     }
   }
 
@@ -70,11 +71,11 @@ export function nextTarget(
 
   // Soonest wins. On a tie the event wins, because "Book Fair" tells her more
   // about the day than "No school" does.
-  candidates.sort((a, b) => a.sleeps - b.sleeps || rank(a) - rank(b));
+  candidates.sort((a, b) => a.nights - b.nights || rank(a) - rank(b));
   return candidates[0]!;
 }
 
-function rank(target: CountdownTarget): number {
+function rank(target: SleepsTarget): number {
   return target.glyph === "no-school" ? 1 : 0;
 }
 
@@ -82,10 +83,10 @@ function rank(target: CountdownTarget): number {
  * How many Sleeps still mean something.
  *
  * Ten, because that is how many fingers she has to count on. Past that the
- * number stops being a countdown and becomes a fact about arithmetic, and a
- * cell showing "47" is a cell she has stopped looking at. What replaces it has
- * to be worth the space, which is why the fallback is tomorrow's weather
- * rather than a blank.
+ * number stops being something she can feel and becomes arithmetic, and a cell
+ * showing "47" is a cell she has stopped looking at. What replaces it has to
+ * be worth the space, which is why the fallback is tomorrow's weather rather
+ * than a blank.
  */
 export const SLEEPS_HORIZON = 10;
 
@@ -100,16 +101,16 @@ export const SLEEPS_HORIZON = 10;
  * tomorrow's weather; if there is no forecast either it falls to a question
  * mark, which still occupies the slot.
  */
-export function countdownFor(
+export function sleepsFor(
   today: string,
-  events: readonly EventFact[] = [],
+  events: readonly KidRelevantEvent[] = [],
   calendar: SchoolCalendar = SCHOOL_CALENDAR,
   tomorrowWeather: WeatherFact | null = null,
-): Countdown {
+): Sleeps {
   const target = nextTarget(today, events, calendar);
 
-  if (target !== null && target.sleeps <= SLEEPS_HORIZON) {
-    return { kind: "sleeps", sleeps: target.sleeps, glyph: target.glyph, caption: target.caption };
+  if (target !== null && target.nights <= SLEEPS_HORIZON) {
+    return { kind: "sleeps", nights: target.nights, glyph: target.glyph, caption: target.caption };
   }
 
   if (tomorrowWeather !== null) {

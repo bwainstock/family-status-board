@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { parseIcs } from "../src/sources/ics.js";
-import { allowedEvent, allowedEvents, EVENT_ALLOWLIST } from "../src/day/events.js";
-import { nextTarget, countdownFor, NON_SCHOOL_CAPTION, SLEEPS_HORIZON } from "../src/day/countdown.js";
+import { kidRelevantEvent, kidRelevantEvents, KID_RELEVANT_ALLOWLIST } from "../src/day/kid-events.js";
+import { nextTarget, sleepsFor, NON_SCHOOL_CAPTION, SLEEPS_HORIZON } from "../src/day/sleeps.js";
 import { SCHOOL_CALENDAR } from "../src/day/school-calendar.js";
 import { addDays } from "../src/day/clock.js";
 import { WEATHER_GLYPH_NAMES, type WeatherFact } from "../src/day/model.js";
@@ -34,14 +34,14 @@ const MUST_NEVER_APPEAR = [
 describe("the event allowlist", () => {
   it("hides everything it has not been told to show", () => {
     // The default, and the reason the rest of this file can be short.
-    expect(allowedEvent("PTO General Meeting")).toBeNull();
-    expect(allowedEvent("Braised Jackfruit Assembly")).toBeNull();
-    expect(allowedEvent("")).toBeNull();
+    expect(kidRelevantEvent("PTO General Meeting")).toBeNull();
+    expect(kidRelevantEvent("Braised Jackfruit Assembly")).toBeNull();
+    expect(kidRelevantEvent("")).toBeNull();
   });
 
   it("keeps the feed's adult health content off the Board", () => {
     for (const name of MUST_NEVER_APPEAR) {
-      expect(allowedEvent(name), name).toBeNull();
+      expect(kidRelevantEvent(name), name).toBeNull();
     }
   });
 
@@ -50,7 +50,7 @@ describe("the event allowlist", () => {
     // this one proves those strings are what the feed actually contains, and
     // it fails if the school renames a workshop into something that slips
     // through.
-    const shown = allowedEvents(LIVE_EVENTS).map((event) => event.caption.toLowerCase());
+    const shown = kidRelevantEvents(LIVE_EVENTS).map((event) => event.caption.toLowerCase());
     for (const word of ["cancer", "workshop", "conference", "meeting", "training", "orientation"]) {
       expect(shown.join(" "), word).not.toContain(word);
     }
@@ -69,33 +69,33 @@ describe("the event allowlist", () => {
     // differently, so a rule that insisted on the correct spelling would fail
     // in exactly the worst place.
     expect(LIVE_EVENTS.map((event) => event.summary)).toContain("SPIRTI DAY");
-    expect(allowedEvent("SPIRTI DAY")).toEqual({ glyph: "dress-up", caption: "Spirit Day" });
+    expect(kidRelevantEvent("SPIRTI DAY")).toEqual({ glyph: "dress-up", caption: "Spirit Day" });
   });
 
   it("lets through the things that change her own day", () => {
-    expect(allowedEvent("Walk-a-thon")?.glyph).toBe("sports");
-    expect(allowedEvent("Fall Festival")?.glyph).toBe("party");
-    expect(allowedEvent("Spring Picture Day")?.caption).toBe("Picture Day");
+    expect(kidRelevantEvent("Walk-a-thon")?.glyph).toBe("sports");
+    expect(kidRelevantEvent("Fall Festival")?.glyph).toBe("party");
+    expect(kidRelevantEvent("Spring Picture Day")?.caption).toBe("Picture Day");
   });
 
   it("does not answer the closure question, which the calendar owns", () => {
     // The feed carries "NO SCHOOL * 9/28 - 10/02" and a minimum-day notice.
     // ADR 0003 makes the checked-in calendar the authority, and two sources
     // answering one question is how a Board contradicts itself.
-    expect(allowedEvent("NO SCHOOL * 9/28 - 10/02")).toBeNull();
-    expect(allowedEvent("MINIMUM DAY - DISMISSAL 12:21PM")).toBeNull();
+    expect(kidRelevantEvent("NO SCHOOL * 9/28 - 10/02")).toBeNull();
+    expect(kidRelevantEvent("MINIMUM DAY - DISMISSAL 12:21PM")).toBeNull();
   });
 
   it("returns dated facts in date order, because a feed is not sorted", () => {
-    const dates = allowedEvents(LIVE_EVENTS).map((event) => event.date);
+    const dates = kidRelevantEvents(LIVE_EVENTS).map((event) => event.date);
     expect([...dates].sort()).toEqual(dates);
   });
 
   it("fits every Caption it can produce inside the cell", () => {
-    for (const rule of EVENT_ALLOWLIST) {
-      expect(textFitsIn(captionBox(CELLS.countdown), rule.caption, "caption"), rule.caption).toBe(true);
+    for (const rule of KID_RELEVANT_ALLOWLIST) {
+      expect(textFitsIn(captionBox(CELLS.sleeps), rule.caption, "caption"), rule.caption).toBe(true);
     }
-    expect(textFitsIn(captionBox(CELLS.countdown), NON_SCHOOL_CAPTION, "caption")).toBe(true);
+    expect(textFitsIn(captionBox(CELLS.sleeps), NON_SCHOOL_CAPTION, "caption")).toBe(true);
   });
 });
 
@@ -104,12 +104,12 @@ describe("counting Sleeps", () => {
 
   it("counts whole nights, so tomorrow is one sleep", () => {
     const target = nextTarget("2026-11-24", [{ date: "2026-11-25", glyph: "party", caption: "Fall Festival" }]);
-    expect(target?.sleeps).toBe(1);
+    expect(target?.nights).toBe(1);
   });
 
   it("counts today as zero, because today is when she needs telling", () => {
     const target = nextTarget("2026-11-25", [{ date: "2026-11-25", glyph: "party", caption: "Fall Festival" }]);
-    expect(target).toMatchObject({ sleeps: 0, caption: "Fall Festival" });
+    expect(target).toMatchObject({ nights: 0, caption: "Fall Festival" });
   });
 
   it("ignores what has already happened", () => {
@@ -121,26 +121,26 @@ describe("counting Sleeps", () => {
     // 31 October to 3 November is three nights, and no arithmetic on month
     // numbers gets that right.
     const target = nextTarget("2026-10-31", [{ date: "2026-11-03", glyph: "star", caption: "Art Night" }]);
-    expect(target?.sleeps).toBe(3);
+    expect(target?.nights).toBe(3);
   });
 
   it("counts correctly across the daylight-saving change", () => {
     // Clocks go back on 1 November 2026, making one of these nights 25 hours
     // long. Counting elapsed hours and dividing would answer 2.
     const target = nextTarget("2026-10-31", [{ date: "2026-11-02", glyph: "star", caption: "Art Night" }], EMPTY);
-    expect(target?.sleeps).toBe(2);
+    expect(target?.nights).toBe(2);
   });
 
   it("counts correctly across the spring change too", () => {
     // 14 March 2027 is 23 hours long. Dividing would answer 1.
     const target = nextTarget("2027-03-13", [{ date: "2027-03-15", glyph: "star", caption: "Art Night" }], EMPTY);
-    expect(target?.sleeps).toBe(2);
+    expect(target?.nights).toBe(2);
   });
 
   it("counts toward a Non-School Day in its own right", () => {
     // Fall recess begins on 28 September 2026.
     const target = nextTarget("2026-09-24", noEvents);
-    expect(target).toMatchObject({ date: "2026-09-28", sleeps: 4, glyph: "no-school" });
+    expect(target).toMatchObject({ date: "2026-09-28", nights: 4, glyph: "no-school" });
   });
 
   it("counts toward the first day of a recess, not the last", () => {
@@ -174,16 +174,16 @@ describe("counting Sleeps", () => {
   });
 
   it("finds the real next target from the live feed", () => {
-    const target = nextTarget("2026-09-24", allowedEvents(LIVE_EVENTS));
+    const target = nextTarget("2026-09-24", kidRelevantEvents(LIVE_EVENTS));
     expect(target).not.toBeNull();
-    expect(target!.sleeps).toBeGreaterThanOrEqual(0);
+    expect(target!.nights).toBeGreaterThanOrEqual(0);
   });
 });
 
 /**
- * The fallback. Ten Sleeps is where a number stops being a countdown and
- * becomes arithmetic, and a cell showing "47" is a cell she has stopped
- * looking at.
+ * The fallback. Ten Sleeps is where a number stops being something she can
+ * feel and becomes arithmetic, and a cell showing "47" is a cell she has
+ * stopped looking at.
  */
 describe("the Sleeps horizon", () => {
   const FAR = { ...SCHOOL_CALENDAR, nonSchoolDays: {}, minimumDays: {} };
@@ -194,23 +194,23 @@ describe("the Sleeps horizon", () => {
   }
 
   it("counts, just below the horizon", () => {
-    const countdown = countdownFor("2026-09-24", withEventIn(SLEEPS_HORIZON - 1), FAR, TOMORROW);
-    expect(countdown).toMatchObject({ kind: "sleeps", sleeps: SLEEPS_HORIZON - 1 });
+    const sleeps = sleepsFor("2026-09-24", withEventIn(SLEEPS_HORIZON - 1), FAR, TOMORROW);
+    expect(sleeps).toMatchObject({ kind: "sleeps", nights: SLEEPS_HORIZON - 1 });
   });
 
   it("still counts exactly at the horizon", () => {
     // The threshold is inclusive. Ten fingers is ten, not nine.
-    const countdown = countdownFor("2026-09-24", withEventIn(SLEEPS_HORIZON), FAR, TOMORROW);
-    expect(countdown).toMatchObject({ kind: "sleeps", sleeps: SLEEPS_HORIZON });
+    const sleeps = sleepsFor("2026-09-24", withEventIn(SLEEPS_HORIZON), FAR, TOMORROW);
+    expect(sleeps).toMatchObject({ kind: "sleeps", nights: SLEEPS_HORIZON });
   });
 
   it("gives up one Sleep past the horizon and shows tomorrow instead", () => {
-    const countdown = countdownFor("2026-09-24", withEventIn(SLEEPS_HORIZON + 1), FAR, TOMORROW);
-    expect(countdown).toEqual({ kind: "tomorrow-weather", glyph: "rain", tempF: 54 });
+    const sleeps = sleepsFor("2026-09-24", withEventIn(SLEEPS_HORIZON + 1), FAR, TOMORROW);
+    expect(sleeps).toEqual({ kind: "tomorrow-weather", glyph: "rain", tempF: 54 });
   });
 
   it("shows tomorrow when there is nothing ahead at all", () => {
-    expect(countdownFor("2027-07-04", [], SCHOOL_CALENDAR, TOMORROW)).toMatchObject({
+    expect(sleepsFor("2027-07-04", [], SCHOOL_CALENDAR, TOMORROW)).toMatchObject({
       kind: "tomorrow-weather",
     });
   });
@@ -218,16 +218,16 @@ describe("the Sleeps horizon", () => {
   it("uses the same Glyph vocabulary as today's weather", () => {
     // Nothing new to learn: the rain she sees in the fourth cell is the rain
     // she sees in the first.
-    const countdown = countdownFor("2027-07-04", [], SCHOOL_CALENDAR, TOMORROW);
-    expect(countdown && "glyph" in countdown && WEATHER_GLYPH_NAMES).toContain(
-      (countdown as { glyph: string }).glyph,
+    const sleeps = sleepsFor("2027-07-04", [], SCHOOL_CALENDAR, TOMORROW);
+    expect(sleeps && "glyph" in sleeps && WEATHER_GLYPH_NAMES).toContain(
+      (sleeps as { glyph: string }).glyph,
     );
   });
 
   it("falls all the way to nothing when there is no forecast either", () => {
     // Which the renderer draws as a question mark. The cell is never empty,
     // but the model does not invent a fact to fill it.
-    expect(countdownFor("2027-07-04", [], SCHOOL_CALENDAR, null)).toBeNull();
+    expect(sleepsFor("2027-07-04", [], SCHOOL_CALENDAR, null)).toBeNull();
   });
 });
 

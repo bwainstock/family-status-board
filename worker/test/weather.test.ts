@@ -52,7 +52,7 @@ describe("reading a recorded forecast", () => {
     expect(today?.highF).toBeCloseTo(86.1, 1);
   });
 
-  it("finds tomorrow too, which is what the countdown fallback needs", () => {
+  it("finds tomorrow too, which is what the sleeps fallback needs", () => {
     expect(conditionsFor(clear, "2026-09-25")).not.toBeNull();
   });
 

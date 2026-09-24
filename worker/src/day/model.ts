@@ -49,8 +49,8 @@ export type EntreeGlyph =
    *  question mark: there is a lunch, we just have no picture of it. */
   | "unknown";
 
-/** What a countdown is counting toward. */
-export type EventGlyph = "no-school" | "party" | "dress-up" | "book" | "sports" | "star";
+/** What the Sleeps are being counted toward: a Kid-Relevant Event, or a Non-School Day. */
+export type KidEventGlyph = "no-school" | "party" | "dress-up" | "book" | "sports" | "star";
 
 /**
  * Small marks in the Status Corner, read by the Caregiver and not the Viewer.
@@ -79,8 +79,8 @@ export type SchoolState =
  * nothing is close enough to count toward, the slot shows tomorrow's weather
  * rather than a number too large for the Viewer to hold in her head.
  */
-export type Countdown =
-  | { kind: "sleeps"; sleeps: number; glyph: EventGlyph; caption: string }
+export type Sleeps =
+  | { kind: "sleeps"; nights: number; glyph: KidEventGlyph; caption: string }
   | { kind: "tomorrow-weather"; glyph: WeatherGlyph; tempF: number }
   | null;
 
@@ -100,6 +100,6 @@ export interface DayModel {
   readonly weather: WeatherFact | null;
   readonly entree: EntreeFact | null;
   readonly school: SchoolState;
-  readonly countdown: Countdown;
+  readonly sleeps: Sleeps;
   readonly status: readonly StatusFlag[];
 }

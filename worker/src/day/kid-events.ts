@@ -1,5 +1,9 @@
 /**
- * Which events reach the Frame.
+ * Which feed entries are Kid-Relevant Events, and so reach the Frame.
+ *
+ * Most entries are not. The glossary defines the concept as something the
+ * Viewer will see, attend, or be asked to dress for, and the default is to
+ * show nothing.
  *
  * The rule is an allowlist, not a filter, and that distinction is the whole
  * safeguard. The live ParentSquare feed carries several adult health
@@ -13,19 +17,19 @@
  * the only way anything new gets on the Board.
  */
 
-import type { EventGlyph } from "./model.js";
+import type { KidEventGlyph } from "./model.js";
 import type { IcsEvent } from "../sources/ics.js";
 
-export interface EventFact {
+export interface KidRelevantEvent {
   readonly date: string;
-  readonly glyph: EventGlyph;
+  readonly glyph: KidEventGlyph;
   readonly caption: string;
 }
 
 interface AllowRule {
   /** Matched case-insensitively against the event's summary. */
   readonly match: RegExp;
-  readonly glyph: EventGlyph;
+  readonly glyph: KidEventGlyph;
   /** What the cell says. Written short because it has 198px to live in. */
   readonly caption: string;
 }
@@ -46,7 +50,7 @@ interface AllowRule {
  * 0003 the checked-in calendar is the authority on those, and letting the feed
  * answer the same question twice is how the Board starts contradicting itself.
  */
-export const EVENT_ALLOWLIST: readonly AllowRule[] = [
+export const KID_RELEVANT_ALLOWLIST: readonly AllowRule[] = [
   { match: /spirti day|spirit day/i, glyph: "dress-up", caption: "Spirit Day" },
   { match: /picture day/i, glyph: "star", caption: "Picture Day" },
   { match: /picture retake/i, glyph: "star", caption: "Photos again" },
@@ -62,22 +66,22 @@ export const EVENT_ALLOWLIST: readonly AllowRule[] = [
 ];
 
 /** The rule a summary matches, or null — which is the default for everything. */
-export function allowedEvent(summary: string): Omit<EventFact, "date"> | null {
-  const rule = EVENT_ALLOWLIST.find((candidate) => candidate.match.test(summary));
+export function kidRelevantEvent(summary: string): Omit<KidRelevantEvent, "date"> | null {
+  const rule = KID_RELEVANT_ALLOWLIST.find((candidate) => candidate.match.test(summary));
   return rule === undefined ? null : { glyph: rule.glyph, caption: rule.caption };
 }
 
 /**
- * The allowed events from a feed, earliest first.
+ * The Kid-Relevant Events in a feed, earliest first.
  *
- * A single event can appear on several dates — the feed repeats a weekly
+ * One recurring entry appears on several dates — the feed repeats a weekly
  * meeting as separate VEVENTs — so this is a list of dated facts rather than a
- * list of events.
+ * list of entries.
  */
-export function allowedEvents(events: readonly IcsEvent[]): EventFact[] {
+export function kidRelevantEvents(events: readonly IcsEvent[]): KidRelevantEvent[] {
   return events
     .flatMap((event) => {
-      const allowed = allowedEvent(event.summary);
+      const allowed = kidRelevantEvent(event.summary);
       return allowed === null ? [] : [{ date: event.date, ...allowed }];
     })
     .sort((a, b) => a.date.localeCompare(b.date));

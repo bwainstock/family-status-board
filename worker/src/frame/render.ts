@@ -13,7 +13,7 @@
 import { Framebuffer } from "../framebuffer.js";
 import {
   STATUS_FLAGS,
-  type Countdown,
+  type Sleeps,
   type DayModel,
   type EntreeFact,
   type SchoolState,
@@ -85,8 +85,8 @@ function cellContent(name: CellName, day: DayModel, school: SchoolDay): CellCont
       return entreeCell(day.entree);
     case "school":
       return schoolCell(school);
-    case "countdown":
-      return countdownCell(day.countdown);
+    case "sleeps":
+      return sleepsCell(day.sleeps);
   }
 }
 
@@ -95,18 +95,19 @@ function cellContent(name: CellName, day: DayModel, school: SchoolDay): CellCont
  *
  * The number carries no unit. "Sleeps" would not fit beside it, she cannot
  * read it, and the Caption is already spent on the thing itself — which is the
- * more useful of the two, because a number with no object is not a countdown.
+ * more useful of the two, because a number with nothing to wait for is not a
+ * count of anything.
  */
-export function countdownCell(countdown: Countdown): CellContent {
-  if (countdown === null) return placeholderContent("countdown");
+export function sleepsCell(sleeps: Sleeps): CellContent {
+  if (sleeps === null) return placeholderContent("sleeps");
 
-  if (countdown.kind === "sleeps") {
+  if (sleeps.kind === "sleeps") {
     return {
-      glyph: `${countdown.glyph}@96`,
-      // Zero sleeps is today, and "0" would read as nothing left rather than
+      glyph: `${sleeps.glyph}@96`,
+      // Zero Sleeps is today, and "0" would read as nothing left rather than
       // as the day itself.
-      value: countdown.sleeps === 0 ? "Today" : String(countdown.sleeps),
-      caption: countdown.caption,
+      value: sleeps.nights === 0 ? "Today" : String(sleeps.nights),
+      caption: sleeps.caption,
     };
   }
 
@@ -115,9 +116,9 @@ export function countdownCell(countdown: Countdown): CellContent {
   // nothing new to learn — which is also what makes the two confusable, hence
   // the moon.
   return {
-    glyph: `weather-${countdown.glyph}@96`,
+    glyph: `weather-${sleeps.glyph}@96`,
     badge: "tomorrow@32",
-    value: `${countdown.tempF}\u00b0`,
+    value: `${sleeps.tempF}\u00b0`,
     caption: "Tomorrow",
   };
 }
@@ -291,7 +292,7 @@ const PLACEHOLDER_CAPTIONS: Record<CellName, string> = {
   weather: "Weather",
   entree: "Lunch",
   school: "School",
-  countdown: "Sleeps",
+  sleeps: "Sleeps",
 };
 
 function placeholderContent(name: CellName): CellContent {

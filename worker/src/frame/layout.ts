@@ -56,8 +56,8 @@ export const CELL_COUNT = 4;
 export const CELL_WIDTH = WIDTH / CELL_COUNT; // 198
 
 /** The four cells, in the order a Caregiver reads them left to right. */
-export type CellName = "weather" | "entree" | "school" | "countdown";
-export const CELL_ORDER: readonly CellName[] = ["weather", "entree", "school", "countdown"];
+export type CellName = "weather" | "entree" | "school" | "sleeps";
+export const CELL_ORDER: readonly CellName[] = ["weather", "entree", "school", "sleeps"];
 
 export function cellRect(index: number): Rect {
   return {
@@ -72,7 +72,7 @@ export const CELLS: Record<CellName, Rect> = {
   weather: cellRect(0),
   entree: cellRect(1),
   school: cellRect(2),
-  countdown: cellRect(3),
+  sleeps: cellRect(3),
 };
 
 /**

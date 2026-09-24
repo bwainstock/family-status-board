@@ -14,8 +14,8 @@ import { resolveSchool } from "../day/school.js";
 import { SCHOOL_CALENDAR } from "../day/school-calendar.js";
 import { weatherFor } from "../day/weather.js";
 import { entreeFor, readMenu } from "../day/entree.js";
-import { allowedEvents, claimedClosures } from "../day/events.js";
-import { countdownFor } from "../day/countdown.js";
+import { kidRelevantEvents, claimedClosures } from "../day/kid-events.js";
+import { sleepsFor } from "../day/sleeps.js";
 import { chargeReminderDue } from "../day/charge.js";
 import { fetchForecast } from "../sources/open-meteo.js";
 import { fetchMenu } from "../sources/mealviewer.js";
@@ -60,9 +60,9 @@ export async function composeDay(date: string, sources: Sources): Promise<DayMod
     weather: weatherFor(forecast, date),
     entree: entreeFor(menu, date),
     school: school.state,
-    countdown: countdownFor(
+    sleeps: sleepsFor(
       date,
-      allowedEvents(eventsOf(events)),
+      kidRelevantEvents(eventsOf(events)),
       SCHOOL_CALENDAR,
       weatherFor(forecast, addDays(date, 1)),
     ),

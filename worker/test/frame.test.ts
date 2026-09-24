@@ -4,7 +4,7 @@ import {
   schoolCell,
   weatherCell,
   entreeCell,
-  countdownCell,
+  sleepsCell,
   drawCell,
   nonSchoolReasonBox,
   SCHOOL_GLYPHS,
@@ -12,8 +12,8 @@ import {
 import type { DayModel } from "../src/day/model.js";
 import { WEATHER_GLYPH_NAMES, STATUS_FLAGS } from "../src/day/model.js";
 import { ENTREE_TABLE, UNMAPPED_ENTREE } from "../src/day/entree.js";
-import { EVENT_ALLOWLIST } from "../src/day/events.js";
-import { NON_SCHOOL_CAPTION } from "../src/day/countdown.js";
+import { KID_RELEVANT_ALLOWLIST } from "../src/day/kid-events.js";
+import { NON_SCHOOL_CAPTION } from "../src/day/sleeps.js";
 import { bitmap } from "../src/assets/index.js";
 import { formatLongDate } from "../src/day/clock.js";
 import { SCHOOL_CALENDAR } from "../src/day/school-calendar.js";
@@ -40,7 +40,7 @@ function day(overrides: Partial<DayModel> = {}): DayModel {
     weather: null,
     entree: null,
     school: { kind: "school" },
-    countdown: null,
+    sleeps: null,
     status: [],
     ...overrides,
   };
@@ -51,7 +51,7 @@ function answered(overrides: Partial<DayModel> = {}): DayModel {
   return day({
     weather: { glyph: "partly-cloudy", tempF: 72 },
     entree: { glyph: "pizza", caption: "Pizza" },
-    countdown: { kind: "sleeps", sleeps: 4, glyph: "no-school", caption: NON_SCHOOL_CAPTION },
+    sleeps: { kind: "sleeps", nights: 4, glyph: "no-school", caption: NON_SCHOOL_CAPTION },
     ...overrides,
   });
 }
@@ -218,7 +218,7 @@ describe("Frame rendering", () => {
 
   describe("the Sleeps cell", () => {
     it("shows the number, because the number is the thing she is counting", () => {
-      expect(countdownCell({ kind: "sleeps", sleeps: 4, glyph: "party", caption: "Fall Festival" })).toEqual({
+      expect(sleepsCell({ kind: "sleeps", nights: 4, glyph: "party", caption: "Fall Festival" })).toEqual({
         glyph: "party@96",
         value: "4",
         caption: "Fall Festival",
@@ -227,35 +227,35 @@ describe("Frame rendering", () => {
 
     it("says Today rather than zero on the day itself", () => {
       // "0" reads as nothing left, which is the opposite of what it means.
-      const content = countdownCell({ kind: "sleeps", sleeps: 0, glyph: "party", caption: "Fall Festival" });
+      const content = sleepsCell({ kind: "sleeps", nights: 0, glyph: "party", caption: "Fall Festival" });
       expect(content.value).toBe("Today");
     });
 
     it("counts toward a day off with the same house it draws on the day", () => {
       // She learns one picture, not two.
-      const content = countdownCell({ kind: "sleeps", sleeps: 3, glyph: "no-school", caption: NON_SCHOOL_CAPTION });
+      const content = sleepsCell({ kind: "sleeps", nights: 3, glyph: "no-school", caption: NON_SCHOOL_CAPTION });
       expect(content.glyph).toBe(SCHOOL_GLYPHS["no-school"]);
     });
 
     it("has a Glyph for every event the allowlist can produce", () => {
       // A rule pointing at art that does not exist throws at render time, on
       // the wall, on the morning of the event.
-      for (const rule of EVENT_ALLOWLIST) {
-        const content = countdownCell({ kind: "sleeps", sleeps: 1, glyph: rule.glyph, caption: rule.caption });
+      for (const rule of KID_RELEVANT_ALLOWLIST) {
+        const content = sleepsCell({ kind: "sleeps", nights: 1, glyph: rule.glyph, caption: rule.caption });
         expect(() => bitmap(content.glyph!), rule.caption).not.toThrow();
       }
     });
 
     it("fits every value the cell can show, including a whole school year away", () => {
       for (const value of ["Today", "1", "9", "88", "365"]) {
-        const content = countdownCell({ kind: "sleeps", sleeps: 1, glyph: "star", caption: "Art Night" });
-        expect(textFitsIn(valueBox(CELLS.countdown), value, "value"), value).toBe(true);
+        const content = sleepsCell({ kind: "sleeps", nights: 1, glyph: "star", caption: "Art Night" });
+        expect(textFitsIn(valueBox(CELLS.sleeps), value, "value"), value).toBe(true);
         expect(content.caption).toBeTruthy();
       }
     });
 
     it("shows tomorrow's weather when nothing is close enough to count", () => {
-      expect(countdownCell({ kind: "tomorrow-weather", glyph: "rain", tempF: 54 })).toEqual({
+      expect(sleepsCell({ kind: "tomorrow-weather", glyph: "rain", tempF: 54 })).toEqual({
         glyph: "weather-rain@96",
         badge: "tomorrow@32",
         value: "54\u00b0",
@@ -267,7 +267,7 @@ describe("Frame rendering", () => {
       // Same Glyph, same degree sign, a cell apart. Without a mark the Board
       // would appear to be reporting the weather twice and disagreeing with
       // itself.
-      const tomorrow = countdownCell({ kind: "tomorrow-weather", glyph: "sun", tempF: 70 });
+      const tomorrow = sleepsCell({ kind: "tomorrow-weather", glyph: "sun", tempF: 70 });
       const today = weatherCell({ glyph: "sun", tempF: 70 });
       expect(tomorrow.glyph).toBe(today.glyph);
       expect(tomorrow.badge).toBeDefined();
@@ -280,16 +280,16 @@ describe("Frame rendering", () => {
       // one merges with it and both stop being readable.
       const frame = new Framebuffer();
       frame.clear();
-      drawCell(frame, CELLS.countdown, countdownCell({ kind: "tomorrow-weather", glyph: "cloud", tempF: 61 }));
+      drawCell(frame, CELLS.sleeps, sleepsCell({ kind: "tomorrow-weather", glyph: "cloud", tempF: 61 }));
 
-      const box = glyphBox(CELLS.countdown);
+      const box = glyphBox(CELLS.sleeps);
       const gutter = { x: box.x - 4, y: box.y + 28, width: 4, height: 8 };
       expect(countInk(frame, gutter)).toBe(0);
     });
 
     it("never leaves the cell empty, whatever the sources did", () => {
-      expect(countdownCell(null).caption).toBe("Sleeps");
-      expect(countdownCell(null).value).toBe("?");
+      expect(sleepsCell(null).caption).toBe("Sleeps");
+      expect(sleepsCell(null).value).toBe("?");
     });
   });
 
@@ -318,12 +318,12 @@ describe("Frame rendering", () => {
 
     it("draws the day of the event itself", () => {
       expectGolden(
-        "countdown-today",
+        "sleeps-today",
         renderFrame(
           day({
             weather: { glyph: "sun", tempF: 78 },
             entree: { glyph: "corn-dog", caption: "Corn Dog" },
-            countdown: { kind: "sleeps", sleeps: 0, glyph: "dress-up", caption: "Spirit Day" },
+            sleeps: { kind: "sleeps", nights: 0, glyph: "dress-up", caption: "Spirit Day" },
           }),
         ),
       );
@@ -343,12 +343,12 @@ describe("Frame rendering", () => {
 
     it("draws the fallback, which must not read as a second weather cell", () => {
       expectGolden(
-        "countdown-tomorrow-weather",
+        "sleeps-tomorrow-weather",
         renderFrame(
           day({
             weather: { glyph: "sun", tempF: 88 },
             entree: { glyph: "burger", caption: "Hamburger" },
-            countdown: { kind: "tomorrow-weather", glyph: "rain", tempF: 61 },
+            sleeps: { kind: "tomorrow-weather", glyph: "rain", tempF: 61 },
           }),
         ),
       );
@@ -425,7 +425,7 @@ describe("Frame rendering", () => {
       expectGolden(
         "degraded-every-source-down",
         renderFrame(
-          answered({ weather: null, entree: null, countdown: null, status: ["reauth-needed"] }),
+          answered({ weather: null, entree: null, sleeps: null, status: ["reauth-needed"] }),
         ),
       );
     });

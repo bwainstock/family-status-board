@@ -32,7 +32,7 @@ function model(overrides: Partial<DayModel> = {}): DayModel {
     weather: { glyph: "sun", tempF: 72 },
     entree: { glyph: "pizza", caption: "Pizza" },
     school: { kind: "school" },
-    countdown: { kind: "sleeps", sleeps: 3, glyph: "party", caption: "Art Night" },
+    sleeps: { kind: "sleeps", nights: 3, glyph: "party", caption: "Art Night" },
     status: [],
     ...overrides,
   };
