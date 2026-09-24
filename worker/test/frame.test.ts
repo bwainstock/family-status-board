@@ -4,12 +4,16 @@ import {
   schoolCell,
   weatherCell,
   entreeCell,
+  countdownCell,
   nonSchoolReasonBox,
   SCHOOL_GLYPHS,
 } from "../src/frame/render.js";
 import type { DayModel } from "../src/day/model.js";
 import { WEATHER_GLYPH_NAMES } from "../src/day/model.js";
 import { ENTREE_TABLE, UNMAPPED_ENTREE } from "../src/day/entree.js";
+import { EVENT_ALLOWLIST } from "../src/day/events.js";
+import { NON_SCHOOL_CAPTION } from "../src/day/countdown.js";
+import { bitmap } from "../src/assets/index.js";
 import { formatLongDate } from "../src/day/clock.js";
 import { SCHOOL_CALENDAR } from "../src/day/school-calendar.js";
 import { textFitsIn } from "../src/frame/text.js";
@@ -210,6 +214,45 @@ describe("Frame rendering", () => {
     });
   });
 
+  describe("the Sleeps cell", () => {
+    it("shows the number, because the number is the thing she is counting", () => {
+      expect(countdownCell({ kind: "sleeps", sleeps: 4, glyph: "party", caption: "Fall Festival" })).toEqual({
+        glyph: "party@96",
+        value: "4",
+        caption: "Fall Festival",
+      });
+    });
+
+    it("says Today rather than zero on the day itself", () => {
+      // "0" reads as nothing left, which is the opposite of what it means.
+      const content = countdownCell({ kind: "sleeps", sleeps: 0, glyph: "party", caption: "Fall Festival" });
+      expect(content.value).toBe("Today");
+    });
+
+    it("counts toward a day off with the same house it draws on the day", () => {
+      // She learns one picture, not two.
+      const content = countdownCell({ kind: "sleeps", sleeps: 3, glyph: "no-school", caption: NON_SCHOOL_CAPTION });
+      expect(content.glyph).toBe(SCHOOL_GLYPHS["no-school"]);
+    });
+
+    it("has a Glyph for every event the allowlist can produce", () => {
+      // A rule pointing at art that does not exist throws at render time, on
+      // the wall, on the morning of the event.
+      for (const rule of EVENT_ALLOWLIST) {
+        const content = countdownCell({ kind: "sleeps", sleeps: 1, glyph: rule.glyph, caption: rule.caption });
+        expect(() => bitmap(content.glyph!), rule.caption).not.toThrow();
+      }
+    });
+
+    it("fits every value the cell can show, including a whole school year away", () => {
+      for (const value of ["Today", "1", "9", "88", "365"]) {
+        const content = countdownCell({ kind: "sleeps", sleeps: 1, glyph: "star", caption: "Art Night" });
+        expect(textFitsIn(valueBox(CELLS.countdown), value, "value"), value).toBe(true);
+        expect(content.caption).toBeTruthy();
+      }
+    });
+  });
+
   describe("goldens", () => {
     it("draws the school-day skeleton", () => {
       expectGolden("skeleton-school-day", renderFrame(day()));
@@ -227,6 +270,44 @@ describe("Frame rendering", () => {
         "cells-rain-and-unmapped",
         renderFrame(day({ weather: { glyph: "rain", tempF: 54 }, entree: UNMAPPED_ENTREE })),
       );
+    });
+
+    it("draws a full school day with every cell answered", () => {
+      expectGolden(
+        "full-school-day",
+        renderFrame(
+          day({
+            weather: { glyph: "partly-cloudy", tempF: 72 },
+            entree: { glyph: "pizza", caption: "Pizza" },
+            countdown: { kind: "sleeps", sleeps: 4, glyph: "no-school", caption: NON_SCHOOL_CAPTION },
+          }),
+        ),
+      );
+    });
+
+    it("draws the day of the event itself", () => {
+      expectGolden(
+        "countdown-today",
+        renderFrame(
+          day({
+            weather: { glyph: "sun", tempF: 78 },
+            entree: { glyph: "corn-dog", caption: "Corn Dog" },
+            countdown: { kind: "sleeps", sleeps: 0, glyph: "dress-up", caption: "Spirit Day" },
+          }),
+        ),
+      );
+    });
+
+    it("draws every event Glyph the allowlist can reach", () => {
+      // One Frame per Glyph would be five goldens to review; this puts them
+      // side by side so they can be compared as a set, which is how a Viewer
+      // meets them.
+      const frame = new Framebuffer();
+      frame.clear();
+      for (const [i, name] of ["party", "dress-up", "book", "sports", "star"].entries()) {
+        frame.blit(bitmap(`${name}@96` as never), 20 + i * 150, 88);
+      }
+      expectGolden("event-glyphs", frame);
     });
 
     it("draws a Minimum Day, which is a school day that finishes early", () => {

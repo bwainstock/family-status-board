@@ -14,16 +14,24 @@ import { weatherFor } from "./day/weather.js";
 import { entreeFor } from "./day/entree.js";
 import { fetchForecast } from "./sources/open-meteo.js";
 import { fetchMenu } from "./sources/mealviewer.js";
+import { fetchEvents } from "./sources/parentsquare.js";
+import { allowedEvents } from "./day/events.js";
+import { countdownFor } from "./day/countdown.js";
 import type { DayModel } from "./day/model.js";
 import { encodePng1Bit } from "./preview/png.js";
 import { WIDTH, HEIGHT } from "./framebuffer.js";
 
 export interface Env {
-  readonly [key: string]: unknown;
+  /**
+   * The ParentSquare iCal subscription URL. A credential, because it
+   * authenticates by being unguessable: `.dev.vars` in development,
+   * `wrangler secret put` in production, never a default in the source.
+   */
+  readonly PARENTSQUARE_ICS_URL?: string;
 }
 
 export default {
-  async fetch(request: Request): Promise<Response> {
+  async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
 
     if (request.method !== "GET") {
@@ -34,7 +42,7 @@ export default {
       case "/preview":
         return previewPage(url);
       case "/preview.png":
-        return previewImage(url);
+        return previewImage(url, env);
       default:
         return new Response("not found", { status: 404 });
     }
@@ -53,11 +61,11 @@ function requestedDate(url: URL): string | { error: string } {
   return override;
 }
 
-async function previewImage(url: URL): Promise<Response> {
+async function previewImage(url: URL, env: Env): Promise<Response> {
   const date = requestedDate(url);
   if (typeof date !== "string") return new Response(date.error, { status: 400 });
 
-  const frame = renderFrame(await previewDay(date));
+  const frame = renderFrame(await previewDay(date, env));
   const png = encodePng1Bit(frame.bytes, WIDTH, HEIGHT);
 
   return new Response(png, {
@@ -102,13 +110,14 @@ function previewPage(url: URL): Response {
  * Both fetches are started together: they do not depend on each other, and the
  * Board is waiting.
  */
-async function previewDay(date: string): Promise<DayModel> {
+async function previewDay(date: string, env: Env): Promise<DayModel> {
   const school = resolveSchool(date);
 
-  const [forecast, menu] = await Promise.all([
+  const [forecast, menu, events] = await Promise.all([
     fetchForecast(),
     // No lunch to look up on a day there is no school.
     school.state.kind === "no-school" ? Promise.resolve(null) : fetchMenu(date),
+    fetchEvents(env.PARENTSQUARE_ICS_URL),
   ]);
 
   return {
@@ -116,7 +125,7 @@ async function previewDay(date: string): Promise<DayModel> {
     weather: weatherFor(forecast, date),
     entree: entreeFor(menu, date),
     school: school.state,
-    countdown: null,
+    countdown: countdownFor(date, allowedEvents(events ?? [])),
     status: school.flags,
   };
 }

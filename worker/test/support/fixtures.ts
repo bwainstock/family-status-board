@@ -29,6 +29,19 @@ export function fixture<T>(name: string): T {
   return read<T>(name).payload;
 }
 
+/**
+ * A fixture recorded as text rather than JSON, for feeds that are not JSON.
+ * The recorder writes a `#` header explaining where the body came from; that
+ * header is stripped here so callers see exactly what the upstream sent.
+ */
+export function fixtureText(name: string): string {
+  const body = readFileSync(join(FIXTURE_DIR, name), "utf8");
+  return body
+    .split("\n")
+    .filter((line) => !line.startsWith("#"))
+    .join("\n");
+}
+
 /** The URL a fixture was recorded from, so a failure can be traced upstream. */
 export function recordedFrom(name: string): string {
   return read<unknown>(name)._recordedFrom;

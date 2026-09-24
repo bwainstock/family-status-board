@@ -1,11 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import worker from "../src/index.js";
+import worker, { type Env } from "../src/index.js";
 import { decodePng1Bit } from "../src/preview/png.js";
 import { WIDTH, HEIGHT } from "../src/framebuffer.js";
 import { fixture } from "./support/fixtures.js";
 
+/** No feed URL: the events source is a secret and tests do not get one. */
+const NO_SECRETS: Env = {};
+
 function get(path: string): Promise<Response> {
-  return worker.fetch(new Request(`https://board.example${path}`));
+  return worker.fetch(new Request(`https://board.example${path}`), NO_SECRETS);
 }
 
 /**
@@ -97,6 +100,7 @@ describe("preview route", () => {
   it("refuses anything but GET", async () => {
     const response = await worker.fetch(
       new Request("https://board.example/preview.png", { method: "POST" }),
+      NO_SECRETS,
     );
     expect(response.status).toBe(405);
   });

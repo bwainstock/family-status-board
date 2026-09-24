@@ -22,6 +22,7 @@ update DATES — the point is the shapes, not the particular lunches.
 from __future__ import annotations
 
 import json
+import os
 import sys
 import urllib.request
 from pathlib import Path
@@ -102,6 +103,50 @@ def write(name: str, url: str, payload: dict, note: str) -> None:
     print(f"  {path.name}  {path.stat().st_size // 1024} KB")
 
 
+def record_parentsquare() -> None:
+    """
+    The ParentSquare feed, recorded as text rather than JSON.
+
+    The subscription URL authenticates by being unguessable, so it lives in
+    worker/.dev.vars and is never written into the fixture. The recorded body
+    carries no user identifier of its own -- only event UIDs and the school
+    name -- which is what makes it safe to check in.
+
+    This one matters more than the others. The feed carries adult health
+    content that reaches a child's wall unless the allowlist holds, and the
+    only honest test of that is the real list of event names.
+    """
+    url = os.environ.get("PARENTSQUARE_ICS_URL") or dev_vars().get("PARENTSQUARE_ICS_URL")
+    if not url:
+        print("  skipped: set PARENTSQUARE_ICS_URL in worker/.dev.vars")
+        return
+
+    with urllib.request.urlopen(url.replace("webcal://", "https://"), timeout=30) as response:
+        body = response.read().decode("utf-8")
+
+    path = FIXTURES / "parentsquare.ics"
+    path.write_text(
+        "# Recorded from the ParentSquare subscription URL held in\n"
+        "# worker/.dev.vars as PARENTSQUARE_ICS_URL. The URL is a credential\n"
+        "# and is deliberately not recorded here. Verbatim below this line.\n" + body,
+        encoding="utf-8",
+    )
+    print(f"  {path.name}  {path.stat().st_size // 1024} KB")
+
+
+def dev_vars() -> dict[str, str]:
+    path = Path(__file__).resolve().parent.parent / "worker" / ".dev.vars"
+    if not path.exists():
+        return {}
+    values = {}
+    for line in path.read_text(encoding="utf-8").splitlines():
+        if line.startswith("#") or "=" not in line:
+            continue
+        key, _, value = line.partition("=")
+        values[key.strip()] = value.strip().strip('"').strip("'")
+    return values
+
+
 def main() -> int:
     FIXTURES.mkdir(parents=True, exist_ok=True)
     print("MealViewer")
@@ -113,6 +158,9 @@ def main() -> int:
     for name, (lat, lon) in WEATHER_CASES.items():
         url = OPEN_METEO.format(lat=lat, lon=lon)
         write(name, url, get(url), "verbatim")
+
+    print("ParentSquare")
+    record_parentsquare()
 
     return 0
 

@@ -4,7 +4,7 @@
   "payload": {
     "latitude": 37.34048,
     "longitude": -121.9136,
-    "generationtime_ms": 26.944637298583984,
+    "generationtime_ms": 0.21505355834960938,
     "utc_offset_seconds": -25200,
     "timezone": "America/Los_Angeles",
     "timezone_abbreviation": "GMT-7",

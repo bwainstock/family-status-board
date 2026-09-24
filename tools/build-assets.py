@@ -81,6 +81,15 @@ GLYPH_SIZES: Dict[str, List[int]] = {
     "food-breakfast": [96],
     "food-salad": [96],
     "food-unknown": [96],
+    # Event Glyphs are unprefixed because one of them is `no-school`, shared
+    # with the School Cell. Counting Sleeps toward a day off should show the
+    # same house she sees on the day itself, and a prefix would mean either a
+    # second copy of the art or a special case in the renderer.
+    "party": [96],
+    "dress-up": [96],
+    "book": [96],
+    "sports": [96],
+    "star": [96],
     "stale": [32],
     "reauth-needed": [32],
     "charge-reminder": [32],

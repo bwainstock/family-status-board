@@ -13,6 +13,7 @@
 import { Framebuffer } from "../framebuffer.js";
 import {
   STATUS_FLAGS,
+  type Countdown,
   type DayModel,
   type EntreeFact,
   type SchoolState,
@@ -80,8 +81,31 @@ function cellContent(name: CellName, day: DayModel, school: SchoolDay): CellCont
     case "school":
       return schoolCell(school);
     case "countdown":
-      return placeholderContent(name);
+      return countdownCell(day.countdown);
   }
+}
+
+/**
+ * The Sleeps cell: a big number and a picture of what it is counting toward.
+ *
+ * The number carries no unit. "Sleeps" would not fit beside it, she cannot
+ * read it, and the Caption is already spent on the thing itself — which is the
+ * more useful of the two, because a number with no object is not a countdown.
+ */
+export function countdownCell(countdown: Countdown): CellContent {
+  if (countdown === null) return placeholderContent("countdown");
+
+  if (countdown.kind === "sleeps") {
+    return {
+      glyph: `${countdown.glyph}@96`,
+      // Zero sleeps is today, and "0" would read as nothing left rather than
+      // as the day itself.
+      value: countdown.sleeps === 0 ? "Today" : String(countdown.sleeps),
+      caption: countdown.caption,
+    };
+  }
+
+  return placeholderContent("countdown");
 }
 
 /**

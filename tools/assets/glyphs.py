@@ -501,10 +501,113 @@ STATUS_GLYPHS: Dict[str, Callable[[Pen], None]] = {
 }
 
 
+# --- Events -----------------------------------------------------------------
+#
+# What is being counted toward. These stand for a whole category rather than
+# for one event: "party" carries the Fall Festival, Movie Night and the dance
+# alike, because what she needs to know is that something fun is coming, not
+# which committee organised it.
+
+
+def event_party(p: Pen) -> None:
+    """A balloon. Bunting was tried first and closes up into a solid mass at
+    96px; a balloon holds its silhouette at any size, and to a five-year-old it
+    means the same thing."""
+    p.circle(0.50, 0.38, 0.30)
+    # The knot, a small triangle under the balloon.
+    p.polygon([(0.43, 0.66), (0.57, 0.66), (0.50, 0.76)])
+    # The string: straight, with one small curl at the end. Two arcs were tried
+    # and came out as a jagged squiggle at 96px.
+    p.line(0.50, 0.74, 0.50, 0.90, 0.035)
+    p.arc(0.42, 0.90, 0.08, -80, 80, 0.035)
+
+
+def event_dress_up(p: Pen) -> None:
+    """A t-shirt. Spirit Day means wearing something particular, and clothing
+    is the one Glyph that says "you have to do something about this"."""
+    p.polygon(
+        [
+            (0.33, 0.19),
+            (0.67, 0.19),
+            (0.96, 0.35),
+            (0.83, 0.57),
+            (0.75, 0.50),
+            (0.75, 0.88),
+            (0.25, 0.88),
+            (0.25, 0.50),
+            (0.17, 0.57),
+            (0.04, 0.35),
+        ]
+    )
+    # A wide scoop neck. Narrower than this and it closes up at 96px, which is
+    # how a t-shirt turns into a rectangle with shoulders.
+    p.circle(0.50, 0.19, 0.155, color=PAPER)
+    p.rect(0.345, 0.00, 0.655, 0.19, color=PAPER)
+
+
+def event_book(p: Pen) -> None:
+    """An open book, for the Book Fair. Drawn as two outlined pages rather than
+    two filled ones: filled, the halves weld into a single brick."""
+    for sign in (-1, 1):
+        x0 = 0.50 + sign * 0.03
+        x1 = 0.50 + sign * 0.45
+        page = [(x0, 0.30), (x1, 0.22), (x1, 0.72), (x0, 0.80)]
+        p.polygon(page)
+        # Hollow each page out, leaving a border. The inset is 0.06 because
+        # anything thinner welds shut on the downsample.
+        inner = [
+            (0.50 + sign * 0.09, 0.38),
+            (0.50 + sign * 0.39, 0.31),
+            (0.50 + sign * 0.39, 0.66),
+            (0.50 + sign * 0.09, 0.73),
+        ]
+        p.polygon(inner, color=PAPER)
+    # The spine, drawn last so neither knockout eats it.
+    p.rect(0.465, 0.28, 0.535, 0.82)
+
+
+def event_sports(p: Pen) -> None:
+    """Two footprints, for the Walk-a-thon and Walk to School Day. A shoe was
+    tried first and read as an anvil. Footprints say "you will be walking",
+    which is exactly what both of those events are."""
+    for cx, cy in ((0.28, 0.64), (0.72, 0.36)):
+        # The sole: a long oval for the ball of the foot, a round one for the
+        # heel, with a gap between so the arch reads.
+        p.circle(cx, cy - 0.02, 0.165)
+        p.rect(cx - 0.165, cy - 0.02, cx + 0.165, cy + 0.065)
+        p.circle(cx, cy + 0.235, 0.125)
+        # Toes, above the ball of the foot.
+        for i, dx in enumerate((-0.11, -0.01, 0.09)):
+            p.circle(cx + dx, cy - 0.235 + abs(i - 1) * 0.03, 0.05)
+
+
+def event_star(p: Pen) -> None:
+    """A five-pointed star: something special, unspecified. The catch-all for
+    Science Night, Art Night and Picture Day, none of which has a silhouette a
+    pre-literate child would recognise."""
+    points = []
+    for i in range(10):
+        # From the top point, alternating outer and inner radius.
+        angle = -math.pi / 2 + i * math.pi / 5
+        r = 0.48 if i % 2 == 0 else 0.20
+        points.append((0.5 + r * math.cos(angle), 0.5 + r * math.sin(angle)))
+    p.polygon(points)
+
+
+EVENT_GLYPHS: Dict[str, Callable[[Pen], None]] = {
+    "party": event_party,
+    "dress-up": event_dress_up,
+    "book": event_book,
+    "sports": event_sports,
+    "star": event_star,
+}
+
+
 ALL_GLYPHS: Dict[str, Callable[[Pen], None]] = {
     **GLYPHS,
     **WEATHER_GLYPHS,
     **FOOD_GLYPHS,
+    **EVENT_GLYPHS,
     **STATUS_GLYPHS,
 }
 
