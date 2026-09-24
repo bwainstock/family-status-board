@@ -10,6 +10,10 @@
 import { renderFrame } from "./frame/render.js";
 import { localDate, isIsoDate } from "./day/clock.js";
 import { resolveSchool } from "./day/school.js";
+import { weatherFor } from "./day/weather.js";
+import { entreeFor } from "./day/entree.js";
+import { fetchForecast } from "./sources/open-meteo.js";
+import { fetchMenu } from "./sources/mealviewer.js";
 import type { DayModel } from "./day/model.js";
 import { encodePng1Bit } from "./preview/png.js";
 import { WIDTH, HEIGHT } from "./framebuffer.js";
@@ -49,11 +53,11 @@ function requestedDate(url: URL): string | { error: string } {
   return override;
 }
 
-function previewImage(url: URL): Response {
+async function previewImage(url: URL): Promise<Response> {
   const date = requestedDate(url);
   if (typeof date !== "string") return new Response(date.error, { status: 400 });
 
-  const frame = renderFrame(previewDay(date));
+  const frame = renderFrame(await previewDay(date));
   const png = encodePng1Bit(frame.bytes, WIDTH, HEIGHT);
 
   return new Response(png, {
@@ -91,16 +95,26 @@ function previewPage(url: URL): Response {
 }
 
 /**
- * Stands in until the live sources are wired up. The school state is already
- * real — it comes from the checked-in calendar — so the preview can be pointed
- * at Thanksgiving or a Minimum Day and show the genuine article.
+ * Stands in until the scheduled composition and the events feed arrive. The
+ * three wired sources are real, so the preview can be pointed at Thanksgiving
+ * or a Minimum Day and show the genuine article.
+ *
+ * Both fetches are started together: they do not depend on each other, and the
+ * Board is waiting.
  */
-function previewDay(date: string): DayModel {
+async function previewDay(date: string): Promise<DayModel> {
   const school = resolveSchool(date);
+
+  const [forecast, menu] = await Promise.all([
+    fetchForecast(),
+    // No lunch to look up on a day there is no school.
+    school.state.kind === "no-school" ? Promise.resolve(null) : fetchMenu(date),
+  ]);
+
   return {
     date,
-    weather: null,
-    entree: null,
+    weather: weatherFor(forecast, date),
+    entree: entreeFor(menu, date),
     school: school.state,
     countdown: null,
     status: school.flags,

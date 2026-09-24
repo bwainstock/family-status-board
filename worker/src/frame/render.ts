@@ -11,7 +11,15 @@
  */
 
 import { Framebuffer } from "../framebuffer.js";
-import { STATUS_FLAGS, type DayModel, type SchoolState, type StatusFlag } from "../day/model.js";
+import {
+  STATUS_FLAGS,
+  type DayModel,
+  type EntreeFact,
+  type SchoolState,
+  type StatusFlag,
+  type WeatherFact,
+  type WeatherGlyph,
+} from "../day/model.js";
 import { formatLongDate } from "../day/clock.js";
 import { bitmap, type BitmapName } from "../assets/index.js";
 import { drawTextIn } from "./text.js";
@@ -47,16 +55,62 @@ export function renderFrame(day: DayModel): Framebuffer {
   if (day.school.kind === "no-school") {
     drawRule(frame, NON_SCHOOL_SIDE);
     drawNonSchool(frame, day.school.reason);
-    drawCell(frame, NON_SCHOOL_SIDE, placeholderContent("weather"));
+    drawCell(frame, NON_SCHOOL_SIDE, weatherCell(day.weather));
   } else {
+    // Narrowed by the branch above: inside here there is definitely school.
+    const school = day.school;
     for (const name of CELL_ORDER) {
       const cell = CELLS[name];
       drawRule(frame, cell);
-      drawCell(frame, cell, name === "school" ? schoolCell(day.school) : placeholderContent(name));
+      drawCell(frame, cell, cellContent(name, day, school));
     }
   }
 
   return frame;
+}
+
+function cellContent(name: CellName, day: DayModel, school: SchoolDay): CellContent {
+  switch (name) {
+    case "weather":
+      return weatherCell(day.weather);
+    case "entree":
+      return entreeCell(day.entree);
+    case "school":
+      return schoolCell(school);
+    case "countdown":
+      return placeholderContent(name);
+  }
+}
+
+/**
+ * A word for each what-to-wear Glyph. The Viewer reads the picture; this is
+ * for the Caregiver, and it is what stops "hot" and "sun" looking like the
+ * same cell twice.
+ */
+const WEATHER_CAPTIONS: Record<WeatherGlyph, string> = {
+  sun: "Sunny",
+  "partly-cloudy": "Some sun",
+  cloud: "Cloudy",
+  rain: "Rain",
+  snow: "Snow",
+  wind: "Windy",
+  hot: "Hot",
+  cold: "Cold",
+};
+
+export function weatherCell(weather: WeatherFact | null): CellContent {
+  if (weather === null) return { glyph: null, value: "?", caption: "Weather" };
+  return {
+    glyph: `weather-${weather.glyph}@96`,
+    // The degree sign, not "F". She is never going to see Celsius.
+    value: `${weather.tempF}\u00b0`,
+    caption: WEATHER_CAPTIONS[weather.glyph],
+  };
+}
+
+export function entreeCell(entree: EntreeFact | null): CellContent {
+  if (entree === null) return { glyph: null, value: "?", caption: "Lunch" };
+  return { glyph: `food-${entree.glyph}@96`, caption: entree.caption };
 }
 
 /**
@@ -71,13 +125,19 @@ export const SCHOOL_GLYPHS: Record<SchoolState["kind"], BitmapName> = {
 };
 
 /**
+ * A day there is school. The Non-School Day is not a cell substitution — it
+ * takes over the whole panel — so the cell renderer never sees it.
+ */
+export type SchoolDay = Exclude<SchoolState, { kind: "no-school" }>;
+
+/**
  * The School Cell on a day there is school.
  *
  * A Non-School Day is deliberately not expressible here: it takes over the
  * whole panel rather than a 198px cell, and the district's wording ("Martin
  * Luther King Jr. Day") does not fit in one.
  */
-export function schoolCell(state: Exclude<SchoolState, { kind: "no-school" }>): CellContent {
+export function schoolCell(state: SchoolDay): CellContent {
   switch (state.kind) {
     case "school":
       return { glyph: SCHOOL_GLYPHS.school, caption: "School" };
@@ -157,6 +217,11 @@ function drawRule(frame: Framebuffer, region: Rect): void {
 /**
  * Stands in until each cell is wired to its source. The Captions are the ones
  * the finished Board falls back to, so the placeholder Frame is already the
+ * shape of the real thing.
+ */
+/**
+ * The last cell still stands in until the events feed is wired up. Its Caption
+ * is the one the finished Board falls back to, so the Frame is already the
  * shape of the real thing.
  */
 const PLACEHOLDER_CAPTIONS: Record<CellName, string> = {

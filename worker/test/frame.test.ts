@@ -1,12 +1,30 @@
 import { describe, expect, it } from "vitest";
-import { renderFrame, schoolCell, nonSchoolReasonBox, SCHOOL_GLYPHS } from "../src/frame/render.js";
+import {
+  renderFrame,
+  schoolCell,
+  weatherCell,
+  entreeCell,
+  nonSchoolReasonBox,
+  SCHOOL_GLYPHS,
+} from "../src/frame/render.js";
 import type { DayModel } from "../src/day/model.js";
+import { WEATHER_GLYPH_NAMES } from "../src/day/model.js";
+import { ENTREE_TABLE, UNMAPPED_ENTREE } from "../src/day/entree.js";
 import { formatLongDate } from "../src/day/clock.js";
 import { SCHOOL_CALENDAR } from "../src/day/school-calendar.js";
 import { textFitsIn } from "../src/frame/text.js";
 import { expectGolden } from "./support/golden.js";
 import { Framebuffer, FRAME_BYTES, WIDTH, HEIGHT } from "../src/framebuffer.js";
-import { CELLS, CELL_ORDER, DATE_BOX, TOP_BAR, captionBox, glyphBox, type Rect } from "../src/frame/layout.js";
+import {
+  CELLS,
+  CELL_ORDER,
+  DATE_BOX,
+  TOP_BAR,
+  captionBox,
+  glyphBox,
+  valueBox,
+  type Rect,
+} from "../src/frame/layout.js";
 
 function countInk(frame: Framebuffer, region: Rect): number {
   let count = 0;
@@ -114,9 +132,57 @@ describe("Frame rendering", () => {
     });
   });
 
+  describe("the Weather and Entree cells", () => {
+    it("gives every what-to-wear Glyph its own Caption", () => {
+      const captions = WEATHER_GLYPH_NAMES.map((glyph) => weatherCell({ glyph, tempF: 70 }).caption);
+      expect(new Set(captions).size).toBe(captions.length);
+    });
+
+    it("fits every Weather Caption and temperature inside the cell", () => {
+      for (const glyph of WEATHER_GLYPH_NAMES) {
+        const content = weatherCell({ glyph, tempF: 108 });
+        expect(textFitsIn(captionBox(CELLS.weather), content.caption, "caption"), glyph).toBe(true);
+        expect(textFitsIn(valueBox(CELLS.weather), content.value ?? "", "value"), glyph).toBe(true);
+      }
+      // Below freezing is two characters wider than it looks.
+      expect(textFitsIn(valueBox(CELLS.weather), weatherCell({ glyph: "cold", tempF: -12 }).value ?? "", "value")).toBe(
+        true,
+      );
+    });
+
+    it("fits every Entree Caption the table can produce", () => {
+      for (const rule of ENTREE_TABLE) {
+        expect(textFitsIn(captionBox(CELLS.entree), rule.caption, "caption"), rule.caption).toBe(true);
+      }
+      expect(textFitsIn(captionBox(CELLS.entree), UNMAPPED_ENTREE.caption, "caption")).toBe(true);
+    });
+
+    it("still draws a cell when a source failed, so the gap is visible", () => {
+      // The Frame's shape never changes. An absent fact must occupy its slot.
+      expect(weatherCell(null).glyph).toBeNull();
+      expect(entreeCell(null).glyph).toBeNull();
+      expect(weatherCell(null).caption).toBe("Weather");
+      expect(entreeCell(null).caption).toBe("Lunch");
+    });
+  });
+
   describe("goldens", () => {
     it("draws the school-day skeleton", () => {
       expectGolden("skeleton-school-day", renderFrame(day()));
+    });
+
+    it("draws a clear day with a mapped Entree", () => {
+      expectGolden(
+        "cells-clear-and-mapped",
+        renderFrame(day({ weather: { glyph: "sun", tempF: 86 }, entree: { glyph: "taco", caption: "Tacos" } })),
+      );
+    });
+
+    it("draws a rainy day with an Entree the table has not learned", () => {
+      expectGolden(
+        "cells-rain-and-unmapped",
+        renderFrame(day({ weather: { glyph: "rain", tempF: 54 }, entree: UNMAPPED_ENTREE })),
+      );
     });
 
     it("draws a Minimum Day, which is a school day that finishes early", () => {

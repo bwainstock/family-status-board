@@ -14,8 +14,26 @@
  */
 
 /** Chosen for what to wear, not for meteorological accuracy. */
-export type WeatherGlyph = "sun" | "partly-cloudy" | "cloud" | "rain" | "snow" | "wind" | "hot" | "cold";
+export const WEATHER_GLYPH_NAMES = [
+  "sun",
+  "partly-cloudy",
+  "cloud",
+  "rain",
+  "snow",
+  "wind",
+  "hot",
+  "cold",
+] as const;
 
+export type WeatherGlyph = (typeof WEATHER_GLYPH_NAMES)[number];
+
+/**
+ * One dish standing for the whole lunch.
+ *
+ * `hot-dog` and `breakfast` are here because the real SJUSD elementary menu
+ * runs a hot dog every Friday and breakfast-for-lunch every few weeks. Drawing
+ * either as a corn dog would be a lie the Viewer can see.
+ */
 export type EntreeGlyph =
   | "pizza"
   | "sandwich"
@@ -24,8 +42,12 @@ export type EntreeGlyph =
   | "taco"
   | "burger"
   | "corn-dog"
+  | "hot-dog"
+  | "breakfast"
   | "salad"
-  | "unknown-food";
+  /** The table has not learned this dish yet. Drawn as a plate, not as a
+   *  question mark: there is a lunch, we just have no picture of it. */
+  | "unknown";
 
 /** What a countdown is counting toward. */
 export type EventGlyph = "no-school" | "party" | "dress-up" | "book" | "sports" | "star";

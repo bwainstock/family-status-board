@@ -1,0 +1,47 @@
+{
+  "_recordedFrom": "https://api.open-meteo.com/v1/forecast?latitude=47.6062&longitude=-122.3321&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,wind_speed_10m_max&temperature_unit=fahrenheit&wind_speed_unit=mph&timezone=America%2FLos_Angeles&forecast_days=2",
+  "_note": "verbatim",
+  "payload": {
+    "latitude": 47.595562,
+    "longitude": -122.32443,
+    "generationtime_ms": 10.583639144897461,
+    "utc_offset_seconds": -25200,
+    "timezone": "America/Los_Angeles",
+    "timezone_abbreviation": "GMT-7",
+    "elevation": 59.0,
+    "daily_units": {
+      "time": "iso8601",
+      "weather_code": "wmo code",
+      "temperature_2m_max": "\u00b0F",
+      "temperature_2m_min": "\u00b0F",
+      "precipitation_probability_max": "%",
+      "wind_speed_10m_max": "mp/h"
+    },
+    "daily": {
+      "time": [
+        "2026-09-24",
+        "2026-09-25"
+      ],
+      "weather_code": [
+        51,
+        63
+      ],
+      "temperature_2m_max": [
+        58.5,
+        59.4
+      ],
+      "temperature_2m_min": [
+        48.9,
+        47.8
+      ],
+      "precipitation_probability_max": [
+        41,
+        84
+      ],
+      "wind_speed_10m_max": [
+        5.8,
+        10.3
+      ]
+    }
+  }
+}

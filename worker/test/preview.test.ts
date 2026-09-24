@@ -1,10 +1,26 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import worker from "../src/index.js";
 import { decodePng1Bit } from "../src/preview/png.js";
 import { WIDTH, HEIGHT } from "../src/framebuffer.js";
+import { fixture } from "./support/fixtures.js";
 
 function get(path: string): Promise<Response> {
   return worker.fetch(new Request(`https://board.example${path}`));
+}
+
+/**
+ * The route reaches two live upstreams. Serving recorded payloads instead keeps
+ * the suite offline and repeatable, and still exercises the real fetch/parse
+ * path rather than stubbing it out.
+ */
+function serveRecordings(): void {
+  vi.stubGlobal("fetch", async (input: RequestInfo | URL) => {
+    const url = String(input instanceof Request ? input.url : input);
+    const name = url.includes("open-meteo") ? "open-meteo-clear" : "mealviewer-normal";
+    return new Response(JSON.stringify(fixture(name)), {
+      headers: { "content-type": "application/json" },
+    });
+  });
 }
 
 /**
@@ -13,6 +29,8 @@ function get(path: string): Promise<Response> {
  * that Thanksgiving can be inspected in September.
  */
 describe("preview route", () => {
+  beforeEach(serveRecordings);
+  afterEach(() => vi.unstubAllGlobals());
   it("serves a viewable image of the whole panel at true size", async () => {
     const response = await get("/preview.png");
     expect(response.status).toBe(200);
@@ -61,6 +79,19 @@ describe("preview route", () => {
 
   it("has nothing at the root yet", async () => {
     expect((await get("/")).status).toBe(404);
+  });
+
+  it("still draws a Frame when both upstreams are down", async () => {
+    // The Board is on a wall. A failed source must degrade to a question mark,
+    // never to a 500 and a blank panel.
+    vi.stubGlobal("fetch", async () => {
+      throw new Error("network down");
+    });
+
+    const response = await get("/preview.png");
+    expect(response.status).toBe(200);
+    const decoded = decodePng1Bit(new Uint8Array(await response.arrayBuffer()));
+    expect({ width: decoded.width, height: decoded.height }).toEqual({ width: WIDTH, height: HEIGHT });
   });
 
   it("refuses anything but GET", async () => {
