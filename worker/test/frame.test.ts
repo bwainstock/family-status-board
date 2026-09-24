@@ -1,9 +1,20 @@
 import { describe, expect, it } from "vitest";
 import { renderFrame } from "../src/frame/render.js";
 import type { DayModel } from "../src/day/model.js";
+import { formatLongDate } from "../src/day/clock.js";
 import { expectGolden } from "./support/golden.js";
-import { FRAME_BYTES, WIDTH, HEIGHT } from "../src/framebuffer.js";
-import { CELLS, CELL_ORDER, TOP_BAR } from "../src/frame/layout.js";
+import { Framebuffer, FRAME_BYTES, WIDTH, HEIGHT } from "../src/framebuffer.js";
+import { CELLS, CELL_ORDER, DATE_BOX, TOP_BAR, captionBox, glyphBox, type Rect } from "../src/frame/layout.js";
+
+function countInk(frame: Framebuffer, region: Rect): number {
+  let count = 0;
+  for (let y = region.y; y < region.y + region.height; y++) {
+    for (let x = region.x; x < region.x + region.width; x++) {
+      if (frame.getPixel(x, y)) count++;
+    }
+  }
+  return count;
+}
 
 function day(overrides: Partial<DayModel> = {}): DayModel {
   return {
@@ -33,6 +44,28 @@ describe("Frame rendering", () => {
     expect(frame.getPixel(WIDTH - 1, TOP_BAR.height - 1)).toBe(true);
     // The bar stops exactly where the cells begin.
     expect(frame.getPixel(WIDTH - 1, TOP_BAR.height)).toBe(false);
+  });
+
+  it("writes the date in full, in the form the Viewer is learning", () => {
+    const frame = renderFrame(day({ date: "2026-09-24" }));
+    // The date is white ink punched out of the filled bar.
+    let whitePixels = 0;
+    for (let y = DATE_BOX.y; y < DATE_BOX.y + DATE_BOX.height; y++) {
+      for (let x = DATE_BOX.x; x < DATE_BOX.x + DATE_BOX.width; x++) {
+        if (!frame.getPixel(x, y)) whitePixels++;
+      }
+    }
+    expect(whitePixels).toBeGreaterThan(200);
+    expect(formatLongDate("2026-09-24")).toBe("September 24, 2026");
+  });
+
+  it("draws a Glyph and a Caption in every cell", () => {
+    const frame = renderFrame(day());
+    for (const name of CELL_ORDER) {
+      const cell = CELLS[name];
+      expect(countInk(frame, glyphBox(cell)), `${name} Glyph`).toBeGreaterThan(100);
+      expect(countInk(frame, captionBox(cell)), `${name} Caption`).toBeGreaterThan(50);
+    }
   });
 
   it("separates the four cells with a rule at each boundary", () => {
