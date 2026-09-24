@@ -90,6 +90,7 @@ GLYPH_SIZES: Dict[str, List[int]] = {
     "book": [96],
     "sports": [96],
     "star": [96],
+    "tomorrow": [32],
     "stale": [32],
     "reauth-needed": [32],
     "charge-reminder": [32],

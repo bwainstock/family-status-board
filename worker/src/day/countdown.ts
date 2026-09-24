@@ -14,7 +14,7 @@
 import { nightsBetween } from "./clock.js";
 import { SCHOOL_CALENDAR, type SchoolCalendar } from "./school-calendar.js";
 import type { EventFact } from "./events.js";
-import type { Countdown, EventGlyph } from "./model.js";
+import type { Countdown, EventGlyph, WeatherFact } from "./model.js";
 
 export interface CountdownTarget {
   readonly date: string;
@@ -79,18 +79,42 @@ function rank(target: CountdownTarget): number {
 }
 
 /**
+ * How many Sleeps still mean something.
+ *
+ * Ten, because that is how many fingers she has to count on. Past that the
+ * number stops being a countdown and becomes a fact about arithmetic, and a
+ * cell showing "47" is a cell she has stopped looking at. What replaces it has
+ * to be worth the space, which is why the fallback is tomorrow's weather
+ * rather than a blank.
+ */
+export const SLEEPS_HORIZON = 10;
+
+/**
  * The cell's fact, in the shape the DayModel carries.
  *
  * Separate from `nextTarget` because the target is a fact about the calendar
- * and this is a decision about the cell. The fallback for "nothing close
- * enough" lands here.
+ * and this is a decision about the cell: whether the nearest target is close
+ * enough to be worth counting, and what to show instead when it is not.
+ *
+ * The cell is never empty. If there is nothing close enough it shows
+ * tomorrow's weather; if there is no forecast either it falls to a question
+ * mark, which still occupies the slot.
  */
 export function countdownFor(
   today: string,
   events: readonly EventFact[] = [],
   calendar: SchoolCalendar = SCHOOL_CALENDAR,
+  tomorrowWeather: WeatherFact | null = null,
 ): Countdown {
   const target = nextTarget(today, events, calendar);
-  if (target === null) return null;
-  return { kind: "sleeps", sleeps: target.sleeps, glyph: target.glyph, caption: target.caption };
+
+  if (target !== null && target.sleeps <= SLEEPS_HORIZON) {
+    return { kind: "sleeps", sleeps: target.sleeps, glyph: target.glyph, caption: target.caption };
+  }
+
+  if (tomorrowWeather !== null) {
+    return { kind: "tomorrow-weather", glyph: tomorrowWeather.glyph, tempF: tomorrowWeather.tempF };
+  }
+
+  return null;
 }

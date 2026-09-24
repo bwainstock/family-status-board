@@ -603,12 +603,26 @@ EVENT_GLYPHS: Dict[str, Callable[[Pen], None]] = {
 }
 
 
+def tomorrow(p: Pen) -> None:
+    """A crescent moon, badged onto a cell that is talking about tomorrow.
+
+    An arrow would have been more literal, but the Board's unit is Sleeps and
+    one moon is one sleep. This says "after tonight" in a vocabulary she is
+    already being taught, which an arrow does not.
+    """
+    p.circle(0.50, 0.50, 0.46)
+    # Bite the crescent out. A tilted bite was tried and left a thin sliver at
+    # the top that vanishes at 32px; the symmetric one holds its weight.
+    p.circle(0.68, 0.50, 0.42, color=PAPER)
+
+
 ALL_GLYPHS: Dict[str, Callable[[Pen], None]] = {
     **GLYPHS,
     **WEATHER_GLYPHS,
     **FOOD_GLYPHS,
     **EVENT_GLYPHS,
     **STATUS_GLYPHS,
+    "tomorrow": tomorrow,
 }
 
 

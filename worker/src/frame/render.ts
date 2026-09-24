@@ -46,6 +46,11 @@ export interface CellContent {
   readonly glyph: BitmapName | null;
   readonly value?: string;
   readonly caption: string;
+  /**
+   * A small mark in the corner of the Glyph box, qualifying it. Used once, to
+   * say that a weather Glyph is about tomorrow rather than about today.
+   */
+  readonly badge?: BitmapName;
 }
 
 export function renderFrame(day: DayModel): Framebuffer {
@@ -105,7 +110,16 @@ export function countdownCell(countdown: Countdown): CellContent {
     };
   }
 
-  return placeholderContent("countdown");
+  // Tomorrow's weather, when nothing is close enough to count toward. The
+  // Glyph vocabulary is the same one the Weather Cell uses, so there is
+  // nothing new to learn — which is also what makes the two confusable, hence
+  // the moon.
+  return {
+    glyph: `weather-${countdown.glyph}@96`,
+    badge: "tomorrow@32",
+    value: `${countdown.tempF}\u00b0`,
+    caption: "Tomorrow",
+  };
 }
 
 /**
@@ -250,6 +264,16 @@ export function drawCell(frame: Framebuffer, cell: Rect, content: CellContent): 
   const glyph = bitmap(content.glyph ?? "unknown@96");
   frame.blit(glyph, box.x + (box.width - glyph.width) / 2, box.y + (box.height - glyph.height) / 2);
 
+  if (content.badge !== undefined) {
+    // Top-left of the Glyph box, and cleared to paper first. Every Glyph here
+    // is a solid silhouette, so a badge dropped straight on top would merge
+    // into whatever it landed on.
+    const badge = bitmap(content.badge);
+    const inset = BADGE_INSET;
+    frame.fillRect(box.x - inset, box.y - inset, badge.width + inset, badge.height + inset, false);
+    frame.blit(badge, box.x - inset, box.y - inset);
+  }
+
   if (content.value !== undefined && content.value !== "") {
     drawTextIn(frame, valueBox(cell), content.value, { role: "value", align: "center" });
   }
@@ -257,20 +281,18 @@ export function drawCell(frame: Framebuffer, cell: Rect, content: CellContent): 
   drawTextIn(frame, captionBox(cell), content.caption, { role: "caption", align: "center" });
 }
 
+/** Clearance around a badge, so it never welds to the Glyph behind it. */
+const BADGE_INSET = 4;
+
 /** A region boundary: a single rule on the left edge, skipped at the panel edge. */
 function drawRule(frame: Framebuffer, region: Rect): void {
   if (region.x > 0) frame.fillRect(region.x, region.y, 1, region.height, true);
 }
 
 /**
- * Stands in until each cell is wired to its source. The Captions are the ones
- * the finished Board falls back to, so the placeholder Frame is already the
- * shape of the real thing.
- */
-/**
- * The last cell still stands in until the events feed is wired up. Its Caption
- * is the one the finished Board falls back to, so the Frame is already the
- * shape of the real thing.
+ * What a cell says when its source could not answer. The Frame keeps its
+ * shape — Glyph, value, Caption — so a missing fact is visible as a gap rather
+ * than as a cell that quietly shrinks or disappears.
  */
 const PLACEHOLDER_CAPTIONS: Record<CellName, string> = {
   weather: "Weather",

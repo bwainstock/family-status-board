@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { parseIcs } from "../src/sources/ics.js";
 import { allowedEvent, allowedEvents, EVENT_ALLOWLIST } from "../src/day/events.js";
-import { nextTarget, NON_SCHOOL_CAPTION } from "../src/day/countdown.js";
+import { nextTarget, countdownFor, NON_SCHOOL_CAPTION, SLEEPS_HORIZON } from "../src/day/countdown.js";
 import { SCHOOL_CALENDAR } from "../src/day/school-calendar.js";
+import { addDays } from "../src/day/clock.js";
+import { WEATHER_GLYPH_NAMES, type WeatherFact } from "../src/day/model.js";
 import { captionBox, CELLS } from "../src/frame/layout.js";
 import { textFitsIn } from "../src/frame/text.js";
 import { fixtureText } from "./support/fixtures.js";
@@ -175,6 +177,57 @@ describe("counting Sleeps", () => {
     const target = nextTarget("2026-09-24", allowedEvents(LIVE_EVENTS));
     expect(target).not.toBeNull();
     expect(target!.sleeps).toBeGreaterThanOrEqual(0);
+  });
+});
+
+/**
+ * The fallback. Ten Sleeps is where a number stops being a countdown and
+ * becomes arithmetic, and a cell showing "47" is a cell she has stopped
+ * looking at.
+ */
+describe("the Sleeps horizon", () => {
+  const FAR = { ...SCHOOL_CALENDAR, nonSchoolDays: {}, minimumDays: {} };
+  const TOMORROW: WeatherFact = { glyph: "rain", tempF: 54 };
+
+  function withEventIn(sleeps: number) {
+    return [{ date: addDays("2026-09-24", sleeps), glyph: "star" as const, caption: "Art Night" }];
+  }
+
+  it("counts, just below the horizon", () => {
+    const countdown = countdownFor("2026-09-24", withEventIn(SLEEPS_HORIZON - 1), FAR, TOMORROW);
+    expect(countdown).toMatchObject({ kind: "sleeps", sleeps: SLEEPS_HORIZON - 1 });
+  });
+
+  it("still counts exactly at the horizon", () => {
+    // The threshold is inclusive. Ten fingers is ten, not nine.
+    const countdown = countdownFor("2026-09-24", withEventIn(SLEEPS_HORIZON), FAR, TOMORROW);
+    expect(countdown).toMatchObject({ kind: "sleeps", sleeps: SLEEPS_HORIZON });
+  });
+
+  it("gives up one Sleep past the horizon and shows tomorrow instead", () => {
+    const countdown = countdownFor("2026-09-24", withEventIn(SLEEPS_HORIZON + 1), FAR, TOMORROW);
+    expect(countdown).toEqual({ kind: "tomorrow-weather", glyph: "rain", tempF: 54 });
+  });
+
+  it("shows tomorrow when there is nothing ahead at all", () => {
+    expect(countdownFor("2027-07-04", [], SCHOOL_CALENDAR, TOMORROW)).toMatchObject({
+      kind: "tomorrow-weather",
+    });
+  });
+
+  it("uses the same Glyph vocabulary as today's weather", () => {
+    // Nothing new to learn: the rain she sees in the fourth cell is the rain
+    // she sees in the first.
+    const countdown = countdownFor("2027-07-04", [], SCHOOL_CALENDAR, TOMORROW);
+    expect(countdown && "glyph" in countdown && WEATHER_GLYPH_NAMES).toContain(
+      (countdown as { glyph: string }).glyph,
+    );
+  });
+
+  it("falls all the way to nothing when there is no forecast either", () => {
+    // Which the renderer draws as a question mark. The cell is never empty,
+    // but the model does not invent a fact to fill it.
+    expect(countdownFor("2027-07-04", [], SCHOOL_CALENDAR, null)).toBeNull();
   });
 });
 

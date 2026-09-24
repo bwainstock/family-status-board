@@ -5,6 +5,7 @@ import {
   weatherCell,
   entreeCell,
   countdownCell,
+  drawCell,
   nonSchoolReasonBox,
   SCHOOL_GLYPHS,
 } from "../src/frame/render.js";
@@ -251,6 +252,44 @@ describe("Frame rendering", () => {
         expect(content.caption).toBeTruthy();
       }
     });
+
+    it("shows tomorrow's weather when nothing is close enough to count", () => {
+      expect(countdownCell({ kind: "tomorrow-weather", glyph: "rain", tempF: 54 })).toEqual({
+        glyph: "weather-rain@96",
+        badge: "tomorrow@32",
+        value: "54\u00b0",
+        caption: "Tomorrow",
+      });
+    });
+
+    it("marks the fallback so it cannot be read as today's weather", () => {
+      // Same Glyph, same degree sign, a cell apart. Without a mark the Board
+      // would appear to be reporting the weather twice and disagreeing with
+      // itself.
+      const tomorrow = countdownCell({ kind: "tomorrow-weather", glyph: "sun", tempF: 70 });
+      const today = weatherCell({ glyph: "sun", tempF: 70 });
+      expect(tomorrow.glyph).toBe(today.glyph);
+      expect(tomorrow.badge).toBeDefined();
+      expect(today.badge).toBeUndefined();
+      expect(tomorrow.caption).not.toBe(today.caption);
+    });
+
+    it("draws the badge without letting it weld to the Glyph behind it", () => {
+      // Every Glyph in this set is a solid silhouette. A badge dropped onto
+      // one merges with it and both stop being readable.
+      const frame = new Framebuffer();
+      frame.clear();
+      drawCell(frame, CELLS.countdown, countdownCell({ kind: "tomorrow-weather", glyph: "cloud", tempF: 61 }));
+
+      const box = glyphBox(CELLS.countdown);
+      const gutter = { x: box.x - 4, y: box.y + 28, width: 4, height: 8 };
+      expect(countInk(frame, gutter)).toBe(0);
+    });
+
+    it("never leaves the cell empty, whatever the sources did", () => {
+      expect(countdownCell(null).caption).toBe("Sleeps");
+      expect(countdownCell(null).value).toBe("?");
+    });
   });
 
   describe("goldens", () => {
@@ -308,6 +347,19 @@ describe("Frame rendering", () => {
         frame.blit(bitmap(`${name}@96` as never), 20 + i * 150, 88);
       }
       expectGolden("event-glyphs", frame);
+    });
+
+    it("draws the fallback, which must not read as a second weather cell", () => {
+      expectGolden(
+        "countdown-tomorrow-weather",
+        renderFrame(
+          day({
+            weather: { glyph: "sun", tempF: 88 },
+            entree: { glyph: "burger", caption: "Hamburger" },
+            countdown: { kind: "tomorrow-weather", glyph: "rain", tempF: 61 },
+          }),
+        ),
+      );
     });
 
     it("draws a Minimum Day, which is a school day that finishes early", () => {

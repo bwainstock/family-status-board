@@ -8,8 +8,9 @@
  */
 
 import { renderFrame } from "./frame/render.js";
-import { localDate, isIsoDate } from "./day/clock.js";
+import { localDate, isIsoDate, addDays } from "./day/clock.js";
 import { resolveSchool } from "./day/school.js";
+import { SCHOOL_CALENDAR } from "./day/school-calendar.js";
 import { weatherFor } from "./day/weather.js";
 import { entreeFor } from "./day/entree.js";
 import { fetchForecast } from "./sources/open-meteo.js";
@@ -125,7 +126,12 @@ async function previewDay(date: string, env: Env): Promise<DayModel> {
     weather: weatherFor(forecast, date),
     entree: entreeFor(menu, date),
     school: school.state,
-    countdown: countdownFor(date, allowedEvents(events ?? [])),
+    countdown: countdownFor(
+      date,
+      allowedEvents(events ?? []),
+      SCHOOL_CALENDAR,
+      weatherFor(forecast, addDays(date, 1)),
+    ),
     status: school.flags,
   };
 }
