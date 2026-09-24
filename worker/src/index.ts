@@ -1,28 +1,19 @@
 /**
- * The Worker's HTTP surface.
+ * The Worker's HTTP surface, and the schedule behind it.
  *
- * Today this is only the development loop: a preview route that renders a Frame
- * as a viewable image so layout work needs no hardware. The Board's own
- * endpoint, its shared secret and the scheduled composition arrive with the
- * delivery path.
+ * Two audiences. `/frame` is the Board: raw bytes and a sleep duration, behind
+ * a shared secret. `/preview` is a human with a browser, so that layout work
+ * needs no hardware.
  */
 
 import { renderFrame } from "./frame/render.js";
-import { localDate, isIsoDate, addDays } from "./day/clock.js";
-import { resolveSchool } from "./day/school.js";
-import { SCHOOL_CALENDAR } from "./day/school-calendar.js";
-import { weatherFor } from "./day/weather.js";
-import { entreeFor } from "./day/entree.js";
-import { fetchForecast } from "./sources/open-meteo.js";
-import { fetchMenu } from "./sources/mealviewer.js";
-import { fetchEvents } from "./sources/parentsquare.js";
-import { allowedEvents } from "./day/events.js";
-import { countdownFor } from "./day/countdown.js";
-import type { DayModel } from "./day/model.js";
+import { localDate, isIsoDate } from "./day/clock.js";
+import { composeDay } from "./board/compose.js";
+import { serveFrame, refreshStoredFrame, type BoardEnv } from "./board/serve.js";
 import { encodePng1Bit } from "./preview/png.js";
 import { WIDTH, HEIGHT } from "./framebuffer.js";
 
-export interface Env {
+export interface Env extends BoardEnv {
   /**
    * The ParentSquare iCal subscription URL. A credential, because it
    * authenticates by being unguessable: `.dev.vars` in development,
@@ -40,6 +31,8 @@ export default {
     }
 
     switch (url.pathname) {
+      case "/frame":
+        return serveFrame(request, env, new Date());
       case "/preview":
         return previewPage(url);
       case "/preview.png":
@@ -47,6 +40,15 @@ export default {
       default:
         return new Response("not found", { status: 404 });
     }
+  },
+
+  /**
+   * Composition runs ahead of the Refresh Window, not during it. The Board is
+   * awake for a few seconds on battery; making it wait on three third-party
+   * APIs is the difference between a download and an outage.
+   */
+  async scheduled(event: ScheduledController, env: Env, ctx: ExecutionContext): Promise<void> {
+    ctx.waitUntil(refreshStoredFrame(env, new Date(event.scheduledTime)));
   },
 };
 
@@ -66,7 +68,7 @@ async function previewImage(url: URL, env: Env): Promise<Response> {
   const date = requestedDate(url);
   if (typeof date !== "string") return new Response(date.error, { status: 400 });
 
-  const frame = renderFrame(await previewDay(date, env));
+  const frame = renderFrame(await composeDay(date, env));
   const png = encodePng1Bit(frame.bytes, WIDTH, HEIGHT);
 
   return new Response(png, {
@@ -101,39 +103,6 @@ function previewPage(url: URL): Response {
   return new Response(body, {
     headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" },
   });
-}
-
-/**
- * Stands in until the scheduled composition and the events feed arrive. The
- * three wired sources are real, so the preview can be pointed at Thanksgiving
- * or a Minimum Day and show the genuine article.
- *
- * Both fetches are started together: they do not depend on each other, and the
- * Board is waiting.
- */
-async function previewDay(date: string, env: Env): Promise<DayModel> {
-  const school = resolveSchool(date);
-
-  const [forecast, menu, events] = await Promise.all([
-    fetchForecast(),
-    // No lunch to look up on a day there is no school.
-    school.state.kind === "no-school" ? Promise.resolve(null) : fetchMenu(date),
-    fetchEvents(env.PARENTSQUARE_ICS_URL),
-  ]);
-
-  return {
-    date,
-    weather: weatherFor(forecast, date),
-    entree: entreeFor(menu, date),
-    school: school.state,
-    countdown: countdownFor(
-      date,
-      allowedEvents(events ?? []),
-      SCHOOL_CALENDAR,
-      weatherFor(forecast, addDays(date, 1)),
-    ),
-    status: school.flags,
-  };
 }
 
 function escapeHtml(value: string): string {

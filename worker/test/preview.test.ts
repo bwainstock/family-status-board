@@ -3,9 +3,10 @@ import worker, { type Env } from "../src/index.js";
 import { decodePng1Bit } from "../src/preview/png.js";
 import { WIDTH, HEIGHT } from "../src/framebuffer.js";
 import { fixture } from "./support/fixtures.js";
+import { MemoryKv } from "./support/kv.js";
 
 /** No feed URL: the events source is a secret and tests do not get one. */
-const NO_SECRETS: Env = {};
+const NO_SECRETS: Env = { FRAMES: new MemoryKv() };
 
 function get(path: string): Promise<Response> {
   return worker.fetch(new Request(`https://board.example${path}`), NO_SECRETS);

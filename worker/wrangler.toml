@@ -5,3 +5,28 @@ compatibility_date = "2026-09-01"
 # The Board is the only consumer and it is on a home network, so there is no
 # custom domain here yet. `wrangler dev` serves the preview route locally.
 workers_dev = true
+
+# Composition runs hourly from 11:00 to 15:00 UTC. That spans 03:00-08:00 local
+# whichever side of daylight saving we are on, so the 06:30 Refresh Window
+# always has a Frame waiting and always has had at least one retry before it.
+#
+# Cron is UTC-only, which is exactly why the Refresh Window itself is computed
+# in local time at serve time rather than being pinned to one of these.
+[triggers]
+crons = ["0 11-15 * * *"]
+
+# Holds the composed Frame between the schedule that writes it and the Board
+# that collects it. One key, overwritten each time.
+#
+# Before the first deploy:
+#   npx wrangler kv namespace create FRAMES
+#   npx wrangler kv namespace create FRAMES --preview
+# and paste the ids below. `wrangler dev` uses local storage and ignores them.
+[[kv_namespaces]]
+binding = "FRAMES"
+id = "TODO_RUN_WRANGLER_KV_NAMESPACE_CREATE"
+preview_id = "TODO_RUN_WRANGLER_KV_NAMESPACE_CREATE_PREVIEW"
+
+# Secrets, set with `npx wrangler secret put <NAME>`, never in this file:
+#   BOARD_SECRET          shared with the Board and nothing else
+#   PARENTSQUARE_ICS_URL  the iCal subscription, which authenticates by being unguessable
