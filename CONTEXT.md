@@ -6,6 +6,15 @@ Everything is chosen so it can be understood without reading words.
 
 ## Language
 
+These terms govern how we name things: identifiers, types, modules, commit messages,
+issues, and how we talk to each other. The _Avoid_ lists are binding there.
+
+They do **not** govern Captions — the words actually printed on the Board. Those are
+written for a five-year-old and the Caregiver reading over her shoulder, and the plainest
+word wins. The Entrée cell says "Lunch" for exactly this reason: "lunch" is on Entrée's
+avoid list, and the Caption still says it, because "Entrée" on a small child's board
+would be absurd. Precision in the glossary, plain words on the wall.
+
 ### The audience
 
 **Viewer**:
@@ -61,7 +70,8 @@ _Avoid_: label, text, description, title
 **Entrée**:
 The single dish chosen to stand for a whole day's school lunch. A day's real menu lists
 many items; the Board shows exactly one.
-_Avoid_: meal, menu item, lunch, dish
+_Avoid_: meal, menu item, lunch, dish — in code and discussion. The Caption printed on
+the Board says "Lunch" on purpose; see the note under Language above.
 
 **Sleeps**:
 The count of nights between today and a thing worth waiting for. The Viewer's unit of

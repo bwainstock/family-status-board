@@ -83,7 +83,13 @@ export const ENTREE_TABLE: readonly {
   { match: /chicken|drumstick|tender|nugget|turkey|orange chicken/i, glyph: "chicken", caption: "Chicken" },
 ];
 
-/** What an Entrée the table has not learned yet looks like. */
+/**
+  * What an Entrée the table has not learned yet looks like.
+  *
+  * The Caption says "Lunch" on purpose: there *is* a lunch, we just cannot name it, and
+  * the plainest word is the honest one to print. Captions are exempt from the glossary's
+  * avoid lists -- see the note under Language in CONTEXT.md.
+  */
 export const UNMAPPED_ENTREE: EntreeFact = { glyph: "unknown", caption: "Lunch" };
 
 export function entreeFor(payload: MealViewerPayload | null, date: string): EntreeFact | null {

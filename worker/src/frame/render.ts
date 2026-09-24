@@ -287,6 +287,10 @@ function drawRule(frame: Framebuffer, region: Rect): void {
  * What a cell says when its source could not answer. The Frame keeps its
  * shape — Glyph, value, Caption — so a missing fact is visible as a gap rather
  * than as a cell that quietly shrinks or disappears.
+ *
+ * "Lunch" is deliberate and is not a glossary slip -- Captions are written for the
+ * Viewer, not for us, so they use the plainest word rather than the domain term. See
+ * the note under Language in CONTEXT.md.
  */
 const PLACEHOLDER_CAPTIONS: Record<CellName, string> = {
   weather: "Weather",
