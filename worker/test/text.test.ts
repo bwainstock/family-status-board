@@ -1,7 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { Framebuffer } from "../src/framebuffer.js";
+import { Framebuffer, HEIGHT, WIDTH } from "../src/framebuffer.js";
 import { bitmap, font } from "../src/assets/index.js";
-import { drawText, drawTextIn, measureText, textFitsIn, unsupportedCharacters } from "../src/frame/text.js";
+import { FONTS, type FontRole } from "../src/assets/generated.js";
+import {
+  drawText,
+  drawTextIn,
+  foldForDrawing,
+  measureText,
+  PLACEHOLDER_CHARACTER,
+  textFitsIn,
+  unsupportedCharacters,
+} from "../src/frame/text.js";
 import { CELLS, CELL_ORDER, DATE_BOX, STATUS_SLOTS, TOP_BAR, captionBox, type Rect } from "../src/frame/layout.js";
 import { PLACEHOLDER_CAPTION_VALUES } from "../src/frame/render.js";
 
@@ -60,7 +69,7 @@ describe("text", () => {
       const metrics = measureText("caption", "Chicken");
       drawText(frame, "Chicken", 100, 150, { role: "caption" });
 
-      const bounds = inkBounds(frame, { x: 0, y: 0, width: 792, height: 272 })!;
+      const bounds = inkBounds(frame, { x: 0, y: 0, width: WIDTH, height: HEIGHT })!;
       expect(bounds.x).toBe(100 + metrics.inkLeft);
       expect(bounds.x + bounds.width).toBe(100 + metrics.inkRight);
       expect(bounds.y).toBe(150 + metrics.inkTop);
@@ -108,7 +117,7 @@ describe("text", () => {
       const frame = new Framebuffer();
       const box = captionBox(CELLS.entree);
       drawTextIn(frame, box, "Chicken Bowl", { role: "caption", align: "center" });
-      const bounds = inkBounds(frame, { x: 0, y: 0, width: 792, height: 272 })!;
+      const bounds = inkBounds(frame, { x: 0, y: 0, width: WIDTH, height: HEIGHT })!;
       expect(bounds.x).toBeGreaterThanOrEqual(box.x);
       expect(bounds.x + bounds.width).toBeLessThanOrEqual(box.x + box.width);
       expect(bounds.y).toBeGreaterThanOrEqual(box.y);
@@ -170,15 +179,20 @@ describe("text", () => {
   });
 
   describe("characters the font was not built with", () => {
+    /**
+     * `\u0161` (š) is Latin but outside the accented set `tools/build-assets.py`
+     * bakes in, and stays that way deliberately: the strict policy needs a
+     * character that is genuinely undrawable to prove it still drops one.
+     */
     it("names them, so a checked-in table can be asserted drawable", () => {
       expect(unsupportedCharacters("caption", "Pizza")).toEqual([]);
-      expect(unsupportedCharacters("caption", "Piz\u00e7a")).toEqual(["\u00e7"]);
+      expect(unsupportedCharacters("caption", "Piz\u0161a")).toEqual(["\u0161"]);
     });
 
     it("drops them rather than drawing a tofu box", () => {
       const frame = new Framebuffer();
-      drawText(frame, "\u00e7\u00e7\u00e7", 10, 100, { role: "caption" });
-      expect(inkBounds(frame, { x: 0, y: 0, width: 792, height: 272 })).toBeNull();
+      drawText(frame, "\u0161\u0161\u0161", 10, 100, { role: "caption" });
+      expect(inkBounds(frame, { x: 0, y: 0, width: WIDTH, height: HEIGHT })).toBeNull();
     });
 
     it("can draw every character each role was built with", () => {
@@ -199,6 +213,135 @@ describe("text", () => {
       for (const month of months) {
         expect(unsupportedCharacters("date", `${month} 24, 2026`), month).toEqual([]);
       }
+    });
+  });
+
+  describe("folding text nobody on this team wrote", () => {
+    /**
+     * Every row of the table in issue #22, verbatim: the Caption a calendar
+     * app hands us on the left, what actually reaches the panel — via
+     * `foldForDrawing` — on the right. Before this issue every row here
+     * dropped a character silently; none of them do now.
+     */
+    it.each([
+      ["Dr. Smith @ 3:30", "Dr. Smith @ 3:30"],
+      ["Café", "Café"],
+      ["Parent\u2013teacher", "Parent-teacher"], // en dash
+      ["Mum\u2019s birthday", "Mum's birthday"], // curly apostrophe
+      ["Pick up @ 50%", "Pick up @ 50%"],
+    ])("folds %j to %j", (input, expected) => {
+      expect(foldForDrawing("caption", input)).toBe(expected);
+    });
+
+    it("folds curly quotes, en/em dashes and a non-breaking space to their ASCII equivalents", () => {
+      expect(foldForDrawing("caption", "\u2018quoted\u2019")).toBe("'quoted'");
+      expect(foldForDrawing("caption", "\u201cquoted\u201d")).toBe('"quoted"');
+      expect(foldForDrawing("caption", "en\u2013dash")).toBe("en-dash");
+      expect(foldForDrawing("caption", "em\u2014dash")).toBe("em-dash");
+      expect(foldForDrawing("caption", "a\u00a0b")).toBe("a b");
+    });
+
+    it("folds the Unicode hyphen, non-breaking hyphen and minus sign to ASCII '-'", () => {
+      expect(foldForDrawing("caption", "co\u2010op")).toBe("co-op");
+      expect(foldForDrawing("caption", "co\u2011op")).toBe("co-op");
+      expect(foldForDrawing("caption", "\u22125")).toBe("-5");
+    });
+
+    it("folds prime and double prime to a straight apostrophe and a straight quote", () => {
+      expect(foldForDrawing("caption", "3\u2032")).toBe("3'");
+      expect(foldForDrawing("caption", "3\u2032 2\u2033")).toBe("3' 2\"");
+    });
+
+    it("folds a soft hyphen, a zero-width space and a byte-order mark to nothing, not to a placeholder", () => {
+      expect(foldForDrawing("caption", "un\u00adbroken")).toBe("unbroken");
+      expect(foldForDrawing("caption", "zero\u200bwidth")).toBe("zerowidth");
+      expect(foldForDrawing("caption", "\ufeffleading")).toBe("leading");
+    });
+
+    it("draws a folded curly apostrophe identically to a typed straight one", () => {
+      const curly = new Framebuffer();
+      drawText(curly, foldForDrawing("caption", "Mum\u2019s"), 10, 100, { role: "caption" });
+
+      const straight = new Framebuffer();
+      drawText(straight, "Mum's", 10, 100, { role: "caption" });
+
+      expect(curly.bytes).toEqual(straight.bytes);
+    });
+
+    it("leaves an already-drawable accented letter alone rather than needlessly folding it", () => {
+      // "café" draws directly: é is in the widened caption charset, so there is
+      // nothing to fold, and folding it anyway would throw away information
+      // the font is perfectly capable of keeping.
+      expect(foldForDrawing("caption", "café")).toBe("café");
+      expect(unsupportedCharacters("caption", "café")).toEqual([]);
+    });
+
+    it("bakes an ellipsis and letters with no diacritic to strip, rather than folding or placeholdering them", () => {
+      // æ, ß, ø, Þ and ð are ligatures or stroked letters, not a base letter
+      // plus an accent — `foldForDrawing`'s decomposition step has nothing to
+      // grab onto for any of them — so they are baked directly instead. "…"
+      // is the exact character a calendar app supplies when it has already
+      // truncated a title, and is baked so it draws as itself.
+      for (const ch of ["æ", "ß", "ø", "Þ", "ð", "\u2026"]) {
+        expect(unsupportedCharacters("caption", ch), ch).toEqual([]);
+        expect(foldForDrawing("caption", ch), ch).toBe(ch);
+      }
+    });
+
+    it("decomposes an accented letter the font was not built with to its unaccented base", () => {
+      // š (s-caron) is deliberately outside the baked charset — see the note
+      // above — so it exercises the Unicode-decomposition fallback rather
+      // than the "already in the font" fast path.
+      expect(unsupportedCharacters("caption", "Ku\u0161trica")).toEqual(["\u0161"]);
+      expect(foldForDrawing("caption", "Ku\u0161trica")).toBe("Kustrica");
+    });
+
+    it("substitutes a visible placeholder for a character it can neither draw nor fold, never nothing", () => {
+      // € has no accent to strip and no ASCII stand-in — the case
+      // `foldForDrawing`'s two folds cannot reach.
+      expect(foldForDrawing("caption", "50\u20ac")).toBe(`50${PLACEHOLDER_CHARACTER}`);
+
+      const frame = new Framebuffer();
+      drawText(frame, foldForDrawing("caption", "\u20ac"), 10, 100, { role: "caption" });
+      expect(inkBounds(frame, { x: 0, y: 0, width: WIDTH, height: HEIGHT }), "a placeholder must draw ink").not.toBeNull();
+    });
+
+    /**
+     * "?" is already spoken for: `render.ts` draws it for a cell whose source
+     * failed to load. A placeholder that reused it would make an ordinary
+     * undrawable character in an otherwise-fine title look like that same
+     * failure, which is a claim about the wrong thing going wrong.
+     */
+    it("never uses '?' as the placeholder, because '?' already means a source failed to load on this Board", () => {
+      expect(PLACEHOLDER_CHARACTER).not.toBe("?");
+      expect(PLACEHOLDER_CHARACTER).toBe("\ufffd");
+    });
+
+    /**
+     * `foldForDrawing`'s "never nothing" guarantee only holds if the
+     * placeholder itself is drawable in whichever role it's asked to fall
+     * back in — including a role, like `display`, that never widens its
+     * authored vocabulary for arbitrary text. Iterating `FONTS`'s own keys
+     * rather than a hand-written list of role names means a fifth `FontRole`
+     * that forgets this glyph fails this test, instead of silently reopening
+     * the hole `display` closed.
+     */
+    it("can draw the placeholder in every FontRole, not just the ones widened for arbitrary text", () => {
+      for (const role of Object.keys(FONTS) as FontRole[]) {
+        expect(font(role).char(PLACEHOLDER_CHARACTER), role).not.toBeNull();
+      }
+    });
+
+    it("still lets a Caption we authored drop an unsupported character rather than folding it", () => {
+      // The strict functions are untouched by any of the above: a table we
+      // wrote gets the old, deliberately unforgiving behaviour, because a
+      // character missing there is a bug to catch in a golden, not an input
+      // to survive at runtime. Dropping š leaves exactly the width of
+      // "Kutrica"; folding it to "Kustrica" is one character wider.
+      expect(measureText("caption", "Ku\u0161trica").width).toBe(measureText("caption", "Kutrica").width);
+      expect(measureText("caption", foldForDrawing("caption", "Ku\u0161trica")).width).toBe(
+        measureText("caption", "Kustrica").width,
+      );
     });
   });
 });

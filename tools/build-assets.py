@@ -39,19 +39,69 @@ OUT_PATH = os.path.join(ROOT, "worker", "src", "assets", "generated.ts")
 
 LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
 DIGITS = "0123456789"
-PUNCTUATION = " .,:'!?&-/()+\u00b0"
+# The horizontal ellipsis is baked rather than folded to "..." in
+# frame/text.ts: a calendar app that has already truncated a title supplies
+# this exact character, and drawing it as itself is truer to that input than
+# expanding it into three periods that take up more width than the app meant.
+PUNCTUATION = " .,:'!?&-/()+\u00b0@#%*;\"_[]=\u2026"
+
+# Every Latin-1 Supplement letter that is a plain Latin letter plus a single
+# diacritic — the accents a household actually types in a name or a borrowed
+# word ("Café", "José", "naïve", "crème brûlée"). `frame/text.ts`'s
+# normalisation folds an *accented* letter the font was not built with down to
+# its base letter, so this set does not have to be exhaustive to keep such a
+# letter from vanishing — but a letter baked here draws as itself rather than
+# as a fold's approximation of itself, which is strictly better where it's
+# affordable, and Western European accents are cheap and common enough to be.
+ACCENTED_LATIN = (
+    "\u00c0\u00c1\u00c2\u00c3\u00c4\u00c5"  # ÀÁÂÃÄÅ
+    "\u00e0\u00e1\u00e2\u00e3\u00e4\u00e5"  # àáâãäå
+    "\u00c7\u00e7"  # Çç
+    "\u00c8\u00c9\u00ca\u00cb\u00e8\u00e9\u00ea\u00eb"  # ÈÉÊËèéêë
+    "\u00cc\u00cd\u00ce\u00cf\u00ec\u00ed\u00ee\u00ef"  # ÌÍÎÏìíîï
+    "\u00d1\u00f1"  # Ññ
+    "\u00d2\u00d3\u00d4\u00d5\u00d6\u00f2\u00f3\u00f4\u00f5\u00f6"  # ÒÓÔÕÖòóôõö
+    "\u00d9\u00da\u00db\u00dc\u00f9\u00fa\u00fb\u00fc"  # ÙÚÛÜùúûü
+    "\u00dd\u00fd\u00ff"  # Ýýÿ
+)
+
+# Latin letters that are not a base letter plus a diacritic — a ligature (æ,
+# Æ) or a stroked letter (ø, Ø, þ, Þ, ð, Ð, ß) — so `frame/text.ts`'s
+# accent-stripping fold has no diacritic to grab onto and nothing to fall back
+# to. Baked directly instead: the font already has every one of them, and a
+# name like "Søren" or "Þór" deserves to render as itself rather than as a
+# fold's guess ("Soren", "Thor") that nobody asked for.
+OTHER_LATIN_LETTERS = "\u00c6\u00e6\u00d8\u00f8\u00de\u00fe\u00d0\u00f0\u00df"
+
+# The forgiving policy's placeholder for a character it truly cannot carry
+# (see `PLACEHOLDER_CHARACTER` in `frame/text.ts`). Baked into *every* role
+# below, `display` included, so `foldForDrawing`'s "never nothing" promise is
+# true by construction rather than true only for the roles someone remembered
+# to widen. A role gaining this one glyph is not the same claim as a role
+# gaining the widened charset above — it does not mean `display` is expected
+# to draw arbitrary text, only that if it is ever handed some, the one
+# character standing in for "could not draw this" is not itself undrawable.
+PLACEHOLDER_GLYPH = "\ufffd"  # U+FFFD REPLACEMENT CHARACTER
 
 # One role per size. Adding a size is cheap; adding characters to a size is not,
 # so each role carries only the characters it can actually be asked to draw.
 FONT_ROLES: Dict[str, tuple[int, str]] = {
     # Captions, read by the Caregiver over the Viewer's shoulder.
-    "caption": (20, LETTERS + DIGITS + PUNCTUATION),
+    "caption": (20, LETTERS + DIGITS + PUNCTUATION + ACCENTED_LATIN + OTHER_LATIN_LETTERS + PLACEHOLDER_GLYPH),
     # The date across the top bar, which the Viewer is learning to recognise.
-    "date": (32, LETTERS + DIGITS + PUNCTUATION),
+    "date": (32, LETTERS + DIGITS + PUNCTUATION + ACCENTED_LATIN + OTHER_LATIN_LETTERS + PLACEHOLDER_GLYPH),
     # A cell's value line: a temperature, a number of Sleeps, or a short word.
-    "value": (34, LETTERS + DIGITS + PUNCTUATION),
-    # The Non-School Day headline, legible from across a room.
-    "display": (56, "ABCDEFGHIJKLMNOPQRSTUVWXYZ" + DIGITS + " !'-"),
+    "value": (34, LETTERS + DIGITS + PUNCTUATION + ACCENTED_LATIN + OTHER_LATIN_LETTERS + PLACEHOLDER_GLYPH),
+    # The Non-School Day headline, legible from across a room — a fixed
+    # vocabulary we author, never text a stranger typed, so it does not need
+    # the widened charset the other roles carry. It still carries
+    # `PLACEHOLDER_GLYPH`: not because this role is expected to draw arbitrary
+    # text, but so that `foldForDrawing`'s "never nothing" guarantee holds for
+    # every `FontRole` without an exception nobody remembers to check for.
+    # Resist the urge to tidy this back out to match the authored-only
+    # vocabulary above it — see `worker/test/text.test.ts`'s test that every
+    # role can draw this one character.
+    "display": (56, "ABCDEFGHIJKLMNOPQRSTUVWXYZ" + DIGITS + " !'-" + PLACEHOLDER_GLYPH),
 }
 
 # Glyph name -> the sizes it is drawn at. A cell Glyph is 96px (see
