@@ -4,6 +4,7 @@ import {
   CELLS,
   CELL_COUNT,
   CELL_ORDER,
+  CELL_ROW_HEIGHT,
   CELL_ROW_TOP,
   CELL_WIDTH,
   DATE_BOX,
@@ -34,10 +35,21 @@ function contains(outer: Rect, inner: Rect): boolean {
  * escapes its cell is a Caption bleeding into the next fact.
  */
 describe("Frame layout", () => {
-  it("covers the panel exactly, with no gap and no overhang", () => {
-    expect(TOP_BAR.height + CELLS.weather.height).toBe(HEIGHT);
+  it("spans the panel's full width, with no gap and no overhang", () => {
     expect(CELL_COUNT * CELL_WIDTH).toBe(WIDTH);
     expect(Number.isInteger(CELL_WIDTH)).toBe(true);
+  });
+
+  /**
+   * CELL_ROW_HEIGHT is pinned, not derived from HEIGHT, precisely so that a
+   * taller panel does not stretch the cells into the rows #26 has claimed.
+   * This is the assertion that catches the mistake the golden images cannot,
+   * until #24 regenerates them and #26 fills the band in below.
+   */
+  it("ends the cell row at the old panel's height, leaving the family calendar band's rows untouched", () => {
+    expect(CELL_ROW_TOP + CELL_ROW_HEIGHT).toBe(272);
+    expect(WIDTH).toBe(800);
+    expect(HEIGHT - (CELL_ROW_TOP + CELL_ROW_HEIGHT)).toBe(208);
   });
 
   it("tiles the four cells edge to edge below the bar", () => {
@@ -46,7 +58,7 @@ describe("Frame layout", () => {
       const cell = CELLS[name];
       expect(cell.x, `${name} starts where the previous cell ends`).toBe(expectedX);
       expect(cell.y).toBe(CELL_ROW_TOP);
-      expect(cell.height).toBe(HEIGHT - TOP_BAR.height);
+      expect(cell.height).toBe(CELL_ROW_HEIGHT);
       expectedX += cell.width;
     }
     expect(expectedX).toBe(WIDTH);

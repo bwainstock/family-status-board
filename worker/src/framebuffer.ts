@@ -6,20 +6,21 @@
  * reflashing the Board.
  *
  *   row-major, top-left origin, MSB first, 1bpp, a set bit is black
- *   99 bytes per row x 272 rows = 26,928 bytes
+ *   100 bytes per row x 480 rows = 48,000 bytes
  *
- * Trap worth knowing about: the panel is driven by two SSD1683 controllers with
- * 400 RAM columns each, but only 396 of each are wired. Talking to the
- * controllers directly needs a 100-byte row with a dead 8-pixel gap at columns
- * 396-403. This buffer is the *logical* 792-wide image with no gap; the firmware
- * hands it to GxEPD2's writeImage(), which owns that quirk. Do not bake the gap
- * in here.
+ * History worth knowing, not a current trap: the previous panel was driven by
+ * two cascaded SSD1683 controllers, each wired to only 396 of its 400 RAM
+ * columns, so talking to them directly needed a dead 8-pixel gap this buffer
+ * had to avoid baking in. The GDEY075T7 is a single UC8179 with no such seam.
+ * The discipline still holds even though the reason it was written down does
+ * not: this buffer is the *logical* image, and whatever a display driver's own
+ * RAM addressing needs is the driver's problem, never this buffer's.
  */
 
-export const WIDTH = 792;
-export const HEIGHT = 272;
-export const BYTES_PER_ROW = WIDTH / 8; // 99
-export const FRAME_BYTES = BYTES_PER_ROW * HEIGHT; // 26,928
+export const WIDTH = 800;
+export const HEIGHT = 480;
+export const BYTES_PER_ROW = WIDTH / 8; // 100
+export const FRAME_BYTES = BYTES_PER_ROW * HEIGHT; // 48,000
 
 /** A pre-baked 1-bit image, packed exactly like the framebuffer's rows. */
 export interface Bitmap {

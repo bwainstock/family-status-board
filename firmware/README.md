@@ -50,7 +50,7 @@ noise. Step with the HOME button, or send a rung's letter over the serial port:
 | | |
 |---|---|
 | `a`–`b` | uniform white, uniform black, via GxEPD2's own clear path |
-| `c`–`e` | half-and-half and corner blocks: orientation, mirroring, the seam |
+| `c`–`e` | half-and-half and corner blocks: orientation and mirroring |
 | `f`–`g` | ghost bait, then the full test pattern |
 | `h`–`m` | the same questions through the vendor's raw SSD1683 sequence |
 | `n`–`o` | uniform fills after cutting the panel's supply rail |
@@ -74,11 +74,13 @@ c++ -std=c++17 -Ilib/frame -o /tmp/render_pattern \
 ## Two things not to re-derive
 
 **A set bit is black.** ADR 0002 fixes the Frame's byte contract: row-major, MSB first,
-99 bytes a row, set bit is ink. The controllers use the opposite convention, so the
+100 bytes a row, set bit is ink. The controllers use the opposite convention, so the
 firmware passes `kInvertForPanel = true` to GxEPD2 and nothing else moves. That flag is
 the entire polarity escape hatch, and it lives here rather than in the Worker so that what
 goes over the wire never changes.
 
-**A Frame carries no dead-column gap.** The panel hides 8 columns where its two
-controllers meet, but a Frame is the logical 792-wide image and always has been. Handling
-the gap is the display driver's job.
+**A Frame is the logical image, not the panel's own RAM layout.** The previous panel hid
+8 columns where its two SSD1683 controllers met, and a Frame had to carry no trace of
+that gap. The GDEY075T7 is a single UC8179 with no such gap — but the underlying rule
+survives the hardware that prompted it: whatever a display driver's own RAM addressing
+needs is the driver's job to own, never this buffer's.

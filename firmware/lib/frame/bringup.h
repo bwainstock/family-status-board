@@ -17,17 +17,20 @@ namespace bringup {
 // A ladder of Frames, from "can this panel be driven at all" up to the full
 // test pattern. Walked one step at a time so that a failure names its own
 // cause: if the uniform fills are wrong the driver or the panel is wrong, and
-// if they are right but the halves are not, the fault is in how a Frame is
-// mapped onto the two controllers.
+// if they are right but the halves are not, the fault is in how a Frame's
+// axes are mapped onto the glass. On the previous two-controller panel this
+// was also where a bad master/slave mapping would show up; the GDEY075T7 has
+// only the one controller, but orientation is still worth asking about on its
+// own.
 
-// Left half black, right half white, split exactly on the seam. The bluntest
-// possible question about the x axis and about whether both controllers are
-// being addressed at all.
+// Left half black, right half white, split exactly at the panel's centre. The
+// bluntest possible question about the x axis: is a Frame's width mapped onto
+// the glass at all, and which way round. On the previous panel this line also
+// marked the seam between the two SSD1683 halves; the GDEY075T7 has no seam,
+// so this rung now only answers the orientation question.
 void left_half(uint8_t* bytes);
 
-// Top half black, bottom half white: the same question about the y axis, and
-// about GxEPD2's horizontal split between the controllers' upper and lower
-// quadrants.
+// Top half black, bottom half white: the same question about the y axis.
 void top_half(uint8_t* bytes);
 
 // One block top-left, two top-right, three bottom-left, four bottom-right —
@@ -89,32 +92,39 @@ constexpr int16_t kRampX1 = 552;
 constexpr int16_t kRampY1 = 124;
 constexpr int16_t kRampWeight = 2;
 
-// A rule from edge to edge. A driver that inserts the controllers' dead columns
-// breaks it at the seam; one that drops the last column shortens it.
+// A rule from edge to edge. A driver that silently truncates or duplicates a
+// column anywhere along the row shows up as a shortened or doubled line.
 constexpr int16_t kRuleY = 130;
 constexpr int16_t kRuleH = 4;
 
-// A wedge pointing down at the seam, so the checklist can say "look here".
-constexpr int16_t kWedgeY = 136;
-constexpr int16_t kWedgeH = 10;
-
-// One-pixel vertical lines either side of the seam, with a line landing exactly
-// on it. A column inserted or dropped at the seam doubles a line or opens a gap.
+// Alternating single-pixel columns. A driver that drops, duplicates, or bleeds
+// a column between neighbours shows up here as a closed gap or a doubled
+// line — a fault a solid fill can hide, because a solid fill has nothing
+// adjacent for a bled or dropped column to disagree with. On the previous
+// panel this sat on the seam between the two SSD1683s, which was as good a
+// place as any to put it; the GDEY075T7 has no seam, so kCenterX here is just
+// a convenient landmark, not a hazard being probed for.
 constexpr int16_t kGratingHalfWidth = 50;
 constexpr int16_t kGratingY = 150;
 constexpr int16_t kGratingH = 56;
 
-// A solid block straddling the seam. A dead-column gap cuts a white stripe
-// through the middle of it, which is the loudest signal on the panel.
-constexpr int16_t kSeamBlockHalfWidth = 40;
-constexpr int16_t kSeamBlockY = 210;
-constexpr int16_t kSeamBlockH = 30;
+// A one-pixel line at the panel's horizontal centre, below the grating. The
+// previous two-controller panel needed a wedge here and a solid block below
+// that, alongside the grating above, to prove its dead-column gap had not
+// leaked into the buffer; the GDEY075T7 is a single UC8179 with no such gap to
+// prove absent, so this line is kept only as a centring reference, to be
+// checked against the middle of the panel by eye. (The committed
+// docs/hardware/bringup-pattern.png predates this rung and is 792x272 with the
+// old wedge/grating/seam-block marks — re-render it with render_pattern
+// before trusting it as a reference for this pattern.)
+constexpr int16_t kCenterLineY = 210;
+constexpr int16_t kCenterLineH = 30;
 
-// Ghost bait: 8 blocks across by 4 down, which divides 792 x 272 exactly.
+// Ghost bait: 8 blocks across by 4 down, which divides 800 x 480 exactly.
 constexpr int16_t kBaitCols = 8;
 constexpr int16_t kBaitRows = 4;
-constexpr int16_t kBaitW = frame::kWidth / kBaitCols;   // 99
-constexpr int16_t kBaitH = frame::kHeight / kBaitRows;  // 68
+constexpr int16_t kBaitW = frame::kWidth / kBaitCols;   // 100
+constexpr int16_t kBaitH = frame::kHeight / kBaitRows;  // 120
 
 // Corner blocks: big enough to survive glare and a hand-held photograph.
 constexpr int16_t kBlockSize = 56;

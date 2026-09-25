@@ -4,13 +4,16 @@
 // agree byte for byte:
 //
 //     row-major, top-left origin, MSB first, 1bpp, a set bit is black
-//     99 bytes per row x 272 rows = 26,928 bytes
+//     100 bytes per row x 480 rows = 48,000 bytes
 //
-// See docs/adr/0002-hand-rolled-1bit-framebuffer.md. The panel is driven by two
-// SSD1683 controllers with 400 RAM columns each, of which only 396 are wired,
-// so raw controller access needs a 100-byte row with a dead 8-pixel gap. A
-// Frame is the *logical* 792-wide image with no gap; GxEPD2's writeImage()
-// owns that quirk. Nothing here may reintroduce it.
+// See docs/adr/0002-hand-rolled-1bit-framebuffer.md. The previous panel was
+// driven by two SSD1683 controllers with 400 RAM columns each, of which only
+// 396 were wired, so raw controller access needed a 100-byte row with a dead
+// 8-pixel gap — a hazard this file's comments used to warn about by name. The
+// GDEY075T7 is a single UC8179 with no such gap to guard against. What still
+// holds is the reason the warning existed in the first place: a Frame is the
+// *logical* image, and whatever a display driver's own RAM addressing needs
+// is the driver's problem to own, never this file's.
 //
 // Nothing in this file may include Arduino.h. The point of the seam is that the
 // layout is verifiable on a host with no panel in the room.
@@ -23,18 +26,19 @@
 
 namespace frame {
 
-constexpr int16_t kWidth = 792;
-constexpr int16_t kHeight = 272;
-constexpr size_t kBytesPerRow = kWidth / 8;             // 99
-constexpr size_t kBytes = kBytesPerRow * kHeight;       // 26,928
+constexpr int16_t kWidth = 800;
+constexpr int16_t kHeight = 480;
+constexpr size_t kBytesPerRow = kWidth / 8;             // 100
+constexpr size_t kBytes = kBytesPerRow * kHeight;       // 48,000
 
-// Where the two controllers meet, in logical pixels. Everything either side of
-// this column is written by a different SSD1683, which is why the seam is worth
-// a test pattern of its own.
-constexpr int16_t kSeamX = kWidth / 2;                  // 396
-
-// Where GxEPD2 splits the image vertically between the two controllers' halves.
-constexpr int16_t kSeamY = kHeight / 2;                 // 136
+// The panel's own horizontal and vertical midpoints. On the previous
+// two-controller panel these marked the seam where one SSD1683 stopped and
+// the other started, which is why the bring-up ladder still exercises them —
+// left_half()/top_half() split the panel exactly in two, and the test pattern
+// draws a centre line at kCenterX. None of that is a seam check any more: the
+// GDEY075T7 is a single UC8179 with nothing to straddle here.
+constexpr int16_t kCenterX = kWidth / 2;                // 400
+constexpr int16_t kCenterY = kHeight / 2;               // 240
 
 // Draws into a caller-owned Frame. Owns no storage: the buffer outlives it.
 class Canvas {

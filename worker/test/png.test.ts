@@ -76,7 +76,7 @@ describe("1-bit PNG codec", () => {
 
   /**
    * Stored deflate blocks cap at 65535 bytes and a Frame's scanlines come to
-   * 27,200, so today it fits in one block. This pins the multi-block path so
+   * 48,480, so today it fits in one block. This pins the multi-block path so
    * that a larger panel later does not silently produce a broken stream.
    */
   it("spans multiple stored deflate blocks when the image is large", () => {
@@ -90,7 +90,7 @@ describe("1-bit PNG codec", () => {
   });
 
   it("refuses a buffer that is not the size its dimensions imply", () => {
-    expect(() => encodePng1Bit(new Uint8Array(10), WIDTH, HEIGHT)).toThrow(/expected 26928 bytes/);
+    expect(() => encodePng1Bit(new Uint8Array(10), WIDTH, HEIGHT)).toThrow(/expected 48000 bytes/);
   });
 
   it("refuses to decode something that is not a PNG", () => {

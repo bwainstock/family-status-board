@@ -11,7 +11,7 @@
 // would just be a second thing that can be wrong.
 //
 // The PNG is written by hand — 1 bit per pixel, greyscale, one stored deflate
-// block — because pulling in a dependency to emit 27 KB of uncompressed bytes
+// block — because pulling in a dependency to emit 47 KB of uncompressed bytes
 // would cost more than it saves. Note the inversion on the way out: in PNG
 // greyscale 0 is black, and in a Frame a set bit is black (ADR 0002).
 

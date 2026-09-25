@@ -17,10 +17,10 @@ import {
  */
 describe("wire contract", () => {
   it("matches the panel geometry the firmware expects", () => {
-    expect(WIDTH).toBe(792);
-    expect(HEIGHT).toBe(272);
-    expect(BYTES_PER_ROW).toBe(99);
-    expect(FRAME_BYTES).toBe(26_928);
+    expect(WIDTH).toBe(800);
+    expect(HEIGHT).toBe(480);
+    expect(BYTES_PER_ROW).toBe(100);
+    expect(FRAME_BYTES).toBe(48_000);
   });
 
   it("starts white, because a Frame is composed onto blank paper", () => {
@@ -41,7 +41,7 @@ describe("wire contract", () => {
     expect(fb.bytes[0]).toBe(0x01);
   });
 
-  it("lays rows out top to bottom, 99 bytes apart", () => {
+  it("lays rows out top to bottom, 100 bytes apart", () => {
     const fb = new Framebuffer();
     fb.setPixel(0, 1, true);
     expect(fb.bytes[0]).toBe(0x00);
@@ -54,16 +54,20 @@ describe("wire contract", () => {
     expect(fb.bytes[FRAME_BYTES - 1]).toBe(0x01);
   });
 
-  it("has no dead column gap: x=396..403 are contiguous bits", () => {
-    // The raw controller path needs an 8px dead gap here. The logical buffer
-    // must not have one — these 8 pixels straddle bytes 49 and 50 with nothing
-    // skipped between them.
+  it("has no dead column gap at the panel's centre, where the old seam used to be", () => {
+    // The previous panel's raw controller path needed an 8px dead gap
+    // straddling its centre column, where its two SSD1683 controllers met. The
+    // GDEY075T7 is a single UC8179 with no seam anywhere, so there is no longer
+    // a specific column this guards — but the buffer must still never reserve
+    // a gap for one, so this stays as a general regression check at the same
+    // landmark: these 8 pixels straddle a byte boundary with nothing skipped.
     const fb = new Framebuffer();
-    fb.fillRect(396, 0, 8, 1, true);
-    expect(fb.bytes[49]).toBe(0x0f);
-    expect(fb.bytes[50]).toBe(0xf0);
-    expect(fb.getPixel(395, 0)).toBe(false);
-    expect(fb.getPixel(404, 0)).toBe(false);
+    const x = WIDTH / 2;
+    fb.fillRect(x - 4, 0, 8, 1, true);
+    expect(fb.bytes[x / 8 - 1]).toBe(0x0f);
+    expect(fb.bytes[x / 8]).toBe(0xf0);
+    expect(fb.getPixel(x - 5, 0)).toBe(false);
+    expect(fb.getPixel(x + 4, 0)).toBe(false);
   });
 });
 

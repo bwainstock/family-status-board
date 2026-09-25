@@ -1,3 +1,9 @@
+// Everything below is scoped to the previous panel: the Elecrow CrowPanel's
+// pair of cascaded SSD1683 controllers, retired by issue #18's pivot to the
+// GDEY075T7. It is kept only until issue #23 removes it along with the rest of
+// that panel's bring-up plumbing, and every number in this file — 792, 272,
+// 99 and the rest — describes that retired hardware, not the one this repo
+// now targets.
 #include "panel_probe.h"
 
 #include <Arduino.h>

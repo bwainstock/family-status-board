@@ -2,7 +2,7 @@
 
 All composition happens off-device: a Cloudflare Worker fetches every source, decides
 what the day looks like, and renders a complete Frame. The Board wakes, fetches
-26,928 bytes, blits them to the panel, and sleeps. It parses nothing, lays out nothing,
+48,000 bytes, blits them to the panel, and sleeps. It parses nothing, lays out nothing,
 and knows nothing about weather, lunch, or school.
 
 ## Consequences
