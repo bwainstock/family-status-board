@@ -134,6 +134,47 @@ def record_parentsquare() -> None:
     print(f"  {path.name}  {path.stat().st_size // 1024} KB")
 
 
+def record_google() -> None:
+    """
+    A Google Calendar secret-address iCal feed, recorded as text.
+
+    Not yet wired up: as of the recurrence work in worker/src/sources/rrule.ts
+    (#19), nobody had access to a real secret-address URL to record from, so
+    worker/test/fixtures/google-personal.ics is hand-authored instead and says
+    so in its own header -- see that file for why, and for exactly which
+    RRULE/EXDATE/RECURRENCE-ID shapes it was written to cover.
+
+    Once a real feed is available, set GOOGLE_ICS_URL (in worker/.dev.vars, the
+    same way PARENTSQUARE_ICS_URL already works) and re-run this script. This
+    function will then need the same scrubbing PARENTSQUARE_ICS_URL's fixture
+    never had to do -- a personal calendar's SUMMARYs are exactly the personal
+    detail the issue asked to keep out of the repository -- which this
+    function deliberately does not attempt on its own: renaming a household's
+    real events by hand, once, after recording, is safer than a heuristic that
+    might silently leave one in.
+    """
+    url = os.environ.get("GOOGLE_ICS_URL") or dev_vars().get("GOOGLE_ICS_URL")
+    if not url:
+        print("  skipped: set GOOGLE_ICS_URL in worker/.dev.vars")
+        return
+
+    with urllib.request.urlopen(url.replace("webcal://", "https://"), timeout=30) as response:
+        body = response.read().decode("utf-8")
+
+    path = FIXTURES / "google-recorded.ics"
+    path.write_text(
+        "# Recorded from the Google Calendar secret-address URL held in\n"
+        "# worker/.dev.vars as GOOGLE_ICS_URL. The URL is a credential and is\n"
+        "# deliberately not recorded here. Scrub every SUMMARY/DESCRIPTION of\n"
+        "# real names, places and personal detail by hand before committing --\n"
+        "# this script does not attempt that for you. Verbatim otherwise,\n"
+        "# below this line.\n" + body,
+        encoding="utf-8",
+    )
+    print(f"  {path.name}  {path.stat().st_size // 1024} KB")
+    print("  scrub personal detail from every SUMMARY/DESCRIPTION by hand before committing")
+
+
 def dev_vars() -> dict[str, str]:
     path = Path(__file__).resolve().parent.parent / "worker" / ".dev.vars"
     if not path.exists():
@@ -161,6 +202,9 @@ def main() -> int:
 
     print("ParentSquare")
     record_parentsquare()
+
+    print("Google Calendar")
+    record_google()
 
     return 0
 

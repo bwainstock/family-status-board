@@ -38,6 +38,12 @@ export async function fetchEvents(icsUrl: string | undefined): Promise<EventsRes
       return response.status < 500 ? { kind: "reauth-needed" } : { kind: "unavailable" };
     }
 
+    // No window: ParentSquare's own feed carries no recurrence to bound (see
+    // ics.ts's module comment), so there is nothing here for an omitted
+    // window to silently collapse. That is a fact about *this* feed, not a
+    // general safety rule — a future feed whose events do recur must pass an
+    // explicit window, or every recurring event silently reduces to a single
+    // long-past occurrence. See `parseIcs`'s doc comment for that hazard.
     const events = parseIcs(await response.text());
     // A parse that finds nothing usually means a sign-in page arrived with a
     // 200 on it, which is how a revoked subscription actually presents.
