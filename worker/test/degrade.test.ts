@@ -215,8 +215,8 @@ describe("a live source disagreeing about a closure", () => {
   it("hears the events feed claim a closure too", () => {
     expect(
       claimedClosures([
-        { uid: "a@school", date: "2026-11-03", summary: "NO SCHOOL - Emergency closure" },
-        { uid: "b@school", date: "2026-11-04", summary: "Art Night" },
+        { uid: "a@school", date: "2026-11-03", summary: "NO SCHOOL - Emergency closure", time: null },
+        { uid: "b@school", date: "2026-11-04", summary: "Art Night", time: null },
       ]),
     ).toEqual(new Set(["2026-11-03"]));
   });

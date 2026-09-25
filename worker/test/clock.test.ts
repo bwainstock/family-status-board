@@ -7,6 +7,7 @@ import {
   isIsoDate,
   isWeekend,
   localDate,
+  localTime,
   nightsBetween,
 } from "../src/day/clock.js";
 
@@ -39,6 +40,39 @@ describe("calendar dates at the school", () => {
       const instant = new Date("2026-11-26T00:00:00Z");
       expect(localDate(instant, "UTC")).toBe("2026-11-26");
       expect(localDate(instant, SCHOOL_TIMEZONE)).toBe("2026-11-25");
+    });
+  });
+
+  describe("localTime", () => {
+    it("resolves an instant to the school's wall-clock hour and minute", () => {
+      expect(localTime(new Date("2026-09-24T15:30:00Z"))).toEqual({ hour: 8, minute: 30 });
+    });
+
+    /**
+     * `Intl.DateTimeFormat` with `hour12: false` renders midnight as "24" in
+     * some runtimes rather than "00" — `schedule.ts` already guards the same
+     * formatter option for the same reason. An unguarded caller would report
+     * a midnight event as happening at 24:00, which is not a valid time and
+     * would misdraw or crash whatever tried to render it.
+     */
+    it("renders local midnight as hour 0, not 24", () => {
+      expect(localTime(new Date("2026-09-24T07:00:00Z"))).toEqual({ hour: 0, minute: 0 });
+    });
+
+    it("drops seconds, since nothing the Board draws is precise to one", () => {
+      expect(localTime(new Date("2026-09-24T15:30:59Z"))).toEqual({ hour: 8, minute: 30 });
+    });
+
+    it("gets the wall-clock hour right on both sides of a daylight-saving change", () => {
+      // 17:00 UTC is 10am Pacific in October (UTC-7) and 9am in November (UTC-8).
+      expect(localTime(new Date("2026-10-15T17:00:00Z"))).toEqual({ hour: 10, minute: 0 });
+      expect(localTime(new Date("2026-11-15T17:00:00Z"))).toEqual({ hour: 9, minute: 0 });
+    });
+
+    it("honours a timezone other than the school's", () => {
+      const instant = new Date("2026-09-24T15:30:00Z");
+      expect(localTime(instant, "UTC")).toEqual({ hour: 15, minute: 30 });
+      expect(localTime(instant, SCHOOL_TIMEZONE)).toEqual({ hour: 8, minute: 30 });
     });
   });
 

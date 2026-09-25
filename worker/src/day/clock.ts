@@ -26,6 +26,29 @@ export function localDate(instant: Date, timeZone: string = SCHOOL_TIMEZONE): st
   return `${get("year")}-${get("month")}-${get("day")}`;
 }
 
+/**
+ * `{hour, minute}`, in the school's timezone, for a given instant. The
+ * companion to `localDate`, resolved the same way and for the same reason: a
+ * caller that converted a raw instant to wall-clock time by hand is a caller
+ * one daylight-saving changeover away from being wrong by an hour.
+ *
+ * Seconds are dropped. Nothing the Board draws is precise to the second, and
+ * carrying them past this point would only be a field every consumer has to
+ * remember to ignore.
+ */
+export function localTime(instant: Date, timeZone: string = SCHOOL_TIMEZONE): { hour: number; minute: number } {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone,
+    hour12: false,
+    hour: "2-digit",
+    minute: "2-digit",
+  }).formatToParts(instant);
+  const get = (type: string): number => Number(parts.find((p) => p.type === type)?.value ?? "0");
+  // `hour12: false` renders midnight as 24 in some runtimes — the same trap
+  // src/board/schedule.ts guards against for the same formatter option.
+  return { hour: get("hour") % 24, minute: get("minute") };
+}
+
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 /** Rejects both malformed strings and impossible dates such as `2026-02-31`. */
