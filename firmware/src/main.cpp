@@ -37,7 +37,7 @@
 // changing what goes over the wire, which is the one thing ADR 0002 pins down.
 static constexpr bool kInvertForPanel = true;
 
-// A whole Frame, in internal SRAM. 26,928 bytes of a 512 KB budget, and the
+// A whole Frame, in internal SRAM. 48,000 bytes of a 512 KB budget, and the
 // same buffer the real firmware will download into.
 static uint8_t g_frame[frame::kBytes];
 

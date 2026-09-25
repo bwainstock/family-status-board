@@ -19,7 +19,7 @@ import { formatLongDate } from "../src/day/clock.js";
 import { SCHOOL_CALENDAR } from "../src/day/school-calendar.js";
 import { textFitsIn } from "../src/frame/text.js";
 import { expectGolden } from "./support/golden.js";
-import { Framebuffer, FRAME_BYTES, WIDTH, HEIGHT } from "../src/framebuffer.js";
+import { Framebuffer, FRAME_BYTES, WIDTH } from "../src/framebuffer.js";
 import {
   CELLS,
   CELL_ORDER,
@@ -101,7 +101,7 @@ describe("Frame rendering", () => {
     for (const name of CELL_ORDER) {
       const cell = CELLS[name];
       if (cell.x === 0) continue;
-      expect(frame.getPixel(cell.x, HEIGHT - 1), `${name} left rule`).toBe(true);
+      expect(frame.getPixel(cell.x, cell.y + cell.height - 1), `${name} left rule`).toBe(true);
     }
   });
 

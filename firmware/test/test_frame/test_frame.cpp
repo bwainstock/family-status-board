@@ -18,8 +18,8 @@
 using frame::Canvas;
 using frame::kBytes;
 using frame::kBytesPerRow;
+using frame::kCenterX;
 using frame::kHeight;
-using frame::kSeamX;
 using frame::kWidth;
 
 static uint8_t buffer[kBytes];
@@ -30,10 +30,10 @@ void tearDown(void) {}
 // --- the layout contract with the Worker -----------------------------------
 
 static void test_frame_is_the_size_the_worker_sends(void) {
-  TEST_ASSERT_EQUAL_UINT16(792, kWidth);
-  TEST_ASSERT_EQUAL_UINT16(272, kHeight);
-  TEST_ASSERT_EQUAL_size_t(99, kBytesPerRow);
-  TEST_ASSERT_EQUAL_size_t(26928, kBytes);
+  TEST_ASSERT_EQUAL_UINT16(800, kWidth);
+  TEST_ASSERT_EQUAL_UINT16(480, kHeight);
+  TEST_ASSERT_EQUAL_size_t(100, kBytesPerRow);
+  TEST_ASSERT_EQUAL_size_t(48000, kBytes);
 }
 
 static void test_a_set_bit_is_black_and_bits_run_msb_first(void) {
@@ -48,11 +48,11 @@ static void test_a_set_bit_is_black_and_bits_run_msb_first(void) {
   TEST_ASSERT_EQUAL_HEX8(0x80, buffer[1]);
 }
 
-static void test_rows_are_99_bytes_apart(void) {
+static void test_rows_are_100_bytes_apart(void) {
   Canvas canvas(buffer);
   canvas.set_pixel(0, 1, true);
-  TEST_ASSERT_EQUAL_HEX8(0x00, buffer[98]);
-  TEST_ASSERT_EQUAL_HEX8(0x80, buffer[99]);
+  TEST_ASSERT_EQUAL_HEX8(0x00, buffer[99]);
+  TEST_ASSERT_EQUAL_HEX8(0x80, buffer[100]);
 }
 
 static void test_the_last_pixel_is_the_last_bit(void) {
@@ -213,7 +213,7 @@ static void test_the_ramp_is_smooth_not_stepped(void) {
   }
 }
 
-static void test_the_rule_crosses_the_seam_unbroken(void) {
+static void test_the_rule_spans_the_full_width_unbroken(void) {
   Canvas canvas(buffer);
   bringup::test_pattern(buffer);
   const int16_t y = bringup::layout::kRuleY + 1;
@@ -222,47 +222,55 @@ static void test_the_rule_crosses_the_seam_unbroken(void) {
   }
 }
 
-static void test_the_seam_block_is_solid_across_both_controllers(void) {
-  Canvas canvas(buffer);
-  bringup::test_pattern(buffer);
-  const int16_t half = bringup::layout::kSeamBlockHalfWidth;
-  const size_t ink = ink_in(canvas, kSeamX - half, bringup::layout::kSeamBlockY, half * 2,
-                            bringup::layout::kSeamBlockH);
-  TEST_ASSERT_EQUAL_size_t(size_t(half) * 2 * bringup::layout::kSeamBlockH, ink);
-}
-
-static void test_the_grating_puts_a_line_on_the_seam(void) {
+static void test_the_grating_marks_alternating_columns(void) {
+  // Not a seam check — the GDEY075T7 has none — this is the general
+  // column-integrity check: a dropped, duplicated, or bled column would
+  // close a gap or double a line here, in a way a solid fill cannot reveal.
   Canvas canvas(buffer);
   bringup::test_pattern(buffer);
   const int16_t y = bringup::layout::kGratingY + 1;
-  TEST_ASSERT_TRUE(canvas.pixel(kSeamX, y));
-  TEST_ASSERT_FALSE(canvas.pixel(kSeamX - 1, y));
-  TEST_ASSERT_TRUE(canvas.pixel(kSeamX - 2, y));
-  TEST_ASSERT_FALSE(canvas.pixel(kSeamX + 1, y));
-  TEST_ASSERT_TRUE(canvas.pixel(kSeamX + 2, y));
+  TEST_ASSERT_TRUE(canvas.pixel(kCenterX, y));
+  TEST_ASSERT_FALSE(canvas.pixel(kCenterX - 1, y));
+  TEST_ASSERT_TRUE(canvas.pixel(kCenterX - 2, y));
+  TEST_ASSERT_FALSE(canvas.pixel(kCenterX + 1, y));
+  TEST_ASSERT_TRUE(canvas.pixel(kCenterX + 2, y));
+}
+
+static void test_the_center_line_is_one_pixel_wide(void) {
+  // Not a seam check — the GDEY075T7 has none — just proof that the centring
+  // reference bringup::test_pattern() draws is exactly one pixel and lands
+  // exactly on kCenterX.
+  Canvas canvas(buffer);
+  bringup::test_pattern(buffer);
+  const int16_t y = bringup::layout::kCenterLineY + 1;
+  TEST_ASSERT_TRUE(canvas.pixel(kCenterX, y));
+  TEST_ASSERT_FALSE(canvas.pixel(kCenterX - 1, y));
+  TEST_ASSERT_FALSE(canvas.pixel(kCenterX + 1, y));
 }
 
 // --- the ladder -------------------------------------------------------------
 
-static void test_left_half_splits_exactly_on_the_seam(void) {
-  // The seam is where one controller stops and the other starts. If a Frame's
-  // x axis is mapped correctly this edge lands on it and nowhere else.
+static void test_left_half_splits_exactly_at_the_center(void) {
+  // On the previous panel this edge was the seam where one SSD1683 stopped and
+  // the other started. The GDEY075T7 has no seam, so this now only checks
+  // that a Frame's x axis is mapped onto the glass correctly: the split lands
+  // at the centre and nowhere else.
   Canvas canvas(buffer);
   bringup::left_half(buffer);
   TEST_ASSERT_EQUAL_size_t(size_t(kWidth) * kHeight / 2, frame::ink_count(buffer));
   TEST_ASSERT_TRUE(canvas.pixel(0, 0));
-  TEST_ASSERT_TRUE(canvas.pixel(kSeamX - 1, kHeight - 1));
-  TEST_ASSERT_FALSE(canvas.pixel(kSeamX, 0));
+  TEST_ASSERT_TRUE(canvas.pixel(kCenterX - 1, kHeight - 1));
+  TEST_ASSERT_FALSE(canvas.pixel(kCenterX, 0));
   TEST_ASSERT_FALSE(canvas.pixel(kWidth - 1, kHeight - 1));
 }
 
-static void test_top_half_splits_on_the_controllers_row_boundary(void) {
+static void test_top_half_splits_exactly_at_the_center(void) {
   Canvas canvas(buffer);
   bringup::top_half(buffer);
   TEST_ASSERT_EQUAL_size_t(size_t(kWidth) * kHeight / 2, frame::ink_count(buffer));
   TEST_ASSERT_TRUE(canvas.pixel(0, 0));
-  TEST_ASSERT_TRUE(canvas.pixel(kWidth - 1, frame::kSeamY - 1));
-  TEST_ASSERT_FALSE(canvas.pixel(0, frame::kSeamY));
+  TEST_ASSERT_TRUE(canvas.pixel(kWidth - 1, frame::kCenterY - 1));
+  TEST_ASSERT_FALSE(canvas.pixel(0, frame::kCenterY));
   TEST_ASSERT_FALSE(canvas.pixel(kWidth - 1, kHeight - 1));
 }
 
@@ -325,7 +333,7 @@ int main(int, char**) {
 
   RUN_TEST(test_frame_is_the_size_the_worker_sends);
   RUN_TEST(test_a_set_bit_is_black_and_bits_run_msb_first);
-  RUN_TEST(test_rows_are_99_bytes_apart);
+  RUN_TEST(test_rows_are_100_bytes_apart);
   RUN_TEST(test_the_last_pixel_is_the_last_bit);
   RUN_TEST(test_clear_paints_the_whole_panel);
   RUN_TEST(test_drawing_off_the_edge_is_dropped_not_wrapped);
@@ -339,12 +347,12 @@ int main(int, char**) {
   RUN_TEST(test_polarity_marks_are_one_solid_and_one_hollow);
   RUN_TEST(test_the_nibble_step_lands_on_a_byte_boundary);
   RUN_TEST(test_the_ramp_is_smooth_not_stepped);
-  RUN_TEST(test_the_rule_crosses_the_seam_unbroken);
-  RUN_TEST(test_the_seam_block_is_solid_across_both_controllers);
-  RUN_TEST(test_the_grating_puts_a_line_on_the_seam);
+  RUN_TEST(test_the_rule_spans_the_full_width_unbroken);
+  RUN_TEST(test_the_grating_marks_alternating_columns);
+  RUN_TEST(test_the_center_line_is_one_pixel_wide);
 
-  RUN_TEST(test_left_half_splits_exactly_on_the_seam);
-  RUN_TEST(test_top_half_splits_on_the_controllers_row_boundary);
+  RUN_TEST(test_left_half_splits_exactly_at_the_center);
+  RUN_TEST(test_top_half_splits_exactly_at_the_center);
   RUN_TEST(test_corner_blocks_count_one_two_three_four);
 
   RUN_TEST(test_the_bait_is_about_half_ink);

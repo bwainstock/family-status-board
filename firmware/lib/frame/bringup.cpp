@@ -6,8 +6,8 @@ namespace bringup {
 namespace {
 
 using frame::Canvas;
+using frame::kCenterX;
 using frame::kHeight;
-using frame::kSeamX;
 using frame::kWidth;
 
 namespace lo = layout;
@@ -32,13 +32,13 @@ void pips_to(Canvas& canvas, int16_t right, int16_t y, int count) {
 void left_half(uint8_t* bytes) {
   Canvas canvas(bytes);
   canvas.clear(false);
-  canvas.fill_rect(0, 0, kSeamX, kHeight);
+  canvas.fill_rect(0, 0, kCenterX, kHeight);
 }
 
 void top_half(uint8_t* bytes) {
   Canvas canvas(bytes);
   canvas.clear(false);
-  canvas.fill_rect(0, 0, kWidth, frame::kSeamY);
+  canvas.fill_rect(0, 0, kWidth, frame::kCenterY);
 }
 
 void corner_blocks(uint8_t* bytes) {
@@ -87,8 +87,10 @@ void test_pattern(uint8_t* bytes) {
   // missing side rather than as nothing at all.
   canvas.stroke_rect(0, 0, kWidth, kHeight, lo::kBorderWeight);
 
-  // 1-2-3-4 clockwise from the top left: orientation, mirroring, and proof that
-  // all four of GxEPD2's controller quadrants were written.
+  // 1-2-3-4 clockwise from the top left: proof of orientation and mirroring.
+  // On the previous two-controller panel this also proved that all four
+  // combinations of controller half were written; the GDEY075T7 has only the
+  // one controller, so orientation is the whole of what this checks now.
   const int16_t top = lo::kPipInset;
   const int16_t bottom = int16_t(kHeight - lo::kPipInset - lo::kPipSize);
   const int16_t right = int16_t(kWidth - lo::kPipInset);
@@ -115,24 +117,24 @@ void test_pattern(uint8_t* bytes) {
 
   canvas.fill_rect(0, lo::kRuleY, kWidth, lo::kRuleH);
 
-  // A wedge narrowing to a point on the seam, so the checklist can say where.
-  for (int16_t i = 0; i < lo::kWedgeH; i++) {
-    const int16_t half = int16_t(lo::kWedgeH - i);
-    canvas.fill_rect(int16_t(kSeamX - half), int16_t(lo::kWedgeY + i), int16_t(half * 2),
-                     1);
-  }
-
-  // Alternating single columns with one landing exactly on the seam.
-  for (int16_t x = int16_t(kSeamX - lo::kGratingHalfWidth);
-       x < int16_t(kSeamX + lo::kGratingHalfWidth); x++) {
-    if (((x - kSeamX) & 1) != 0) continue;
+  // Alternating single columns, centred on the panel. One lands exactly on
+  // kCenterX; the rest step away from it two pixels at a time.
+  for (int16_t x = int16_t(kCenterX - lo::kGratingHalfWidth);
+       x < int16_t(kCenterX + lo::kGratingHalfWidth); x++) {
+    if (((x - kCenterX) & 1) != 0) continue;
     canvas.fill_rect(x, lo::kGratingY, 1, lo::kGratingH);
   }
 
-  // And one solid block straddling the seam: a dead-column gap would cut a
-  // white stripe straight through the middle of it.
-  canvas.fill_rect(int16_t(kSeamX - lo::kSeamBlockHalfWidth), lo::kSeamBlockY,
-                   int16_t(lo::kSeamBlockHalfWidth * 2), lo::kSeamBlockH);
+  // A one-pixel line at the panel's centre, below the grating. On the previous
+  // two-controller panel this spot also carried a wedge and a solid block,
+  // both there to prove the dead-column gap between the controllers had not
+  // leaked into the buffer. The GDEY075T7 is a single UC8179 with nothing to
+  // straddle, so those two marks are gone; this line survives only as a
+  // centring reference, to be checked against the middle of the panel by eye.
+  // (The committed docs/hardware/bringup-pattern.png predates this rung and is
+  // 792x272 with the old wedge/grating/seam-block marks — re-render it with
+  // render_pattern before trusting it as a reference for this pattern.)
+  canvas.fill_rect(kCenterX, lo::kCenterLineY, 1, lo::kCenterLineH);
 }
 
 }  // namespace bringup

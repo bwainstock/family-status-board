@@ -4,6 +4,11 @@
 // tell "the library mishandles this panel" apart from "this panel is broken" we
 // need a second opinion, so this file drives the controllers directly.
 //
+// This targets the previous CrowPanel hardware specifically — its numbers
+// (792, 272, 99...) describe that retired panel's two SSD1683s, not the
+// GDEY075T7 issue #18 pivots to. Kept until issue #23 removes it along with
+// the rest of that panel's bring-up plumbing.
+//
 // It follows two independent implementations that agree with each other:
 //
 //   Elecrow's own demo, for the init sequence

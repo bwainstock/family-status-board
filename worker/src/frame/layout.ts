@@ -5,13 +5,16 @@
  * so the layout is plain pixel arithmetic pinned in one place. Every number
  * here is in panel pixels with a top-left origin, matching the framebuffer.
  *
- * The Board is 792x272 in landscape. A bar across the top carries the date and
- * a status corner; below it sit four equal cells. A Non-School Day uses a
- * different arrangement entirely because it is a different kind of day, not a
- * school day with a cell swapped out.
+ * The Board is 800x480 in landscape. A bar across the top carries the date and
+ * a status corner; below it sit four equal cells, in a band still sized to the
+ * previous panel's 272 rows exactly (see CELL_ROW_HEIGHT below) — the rows
+ * beneath that are reserved for the family calendar band arriving in #26 and
+ * this file lays out nothing there yet. A Non-School Day uses a different
+ * arrangement entirely because it is a different kind of day, not a school
+ * day with a cell swapped out.
  */
 
-import { WIDTH, HEIGHT } from "../framebuffer.js";
+import { WIDTH } from "../framebuffer.js";
 
 export interface Rect {
   readonly x: number;
@@ -31,7 +34,7 @@ export const DATE_BOX: Rect = { x: 14, y: 8, width: 560, height: 40 };
  * mark. Empty when nothing needs attention, which is the point: the corner's
  * presence is itself the signal.
  *
- * Four slots reach left to x=632, which still clears DATE_BOX at x=574.
+ * Four slots reach left to x=640, which still clears DATE_BOX at x=574.
  */
 export const STATUS_SLOT_SIZE = 32;
 export const STATUS_SLOT_GAP = 6;
@@ -51,9 +54,20 @@ export const STATUS_SLOTS: readonly Rect[] = Array.from(
 );
 
 export const CELL_ROW_TOP = TOP_BAR.height;
-export const CELL_ROW_HEIGHT = HEIGHT - TOP_BAR.height; // 216
+
+/**
+ * Pinned to 216, not derived from HEIGHT. Top bar (56) + cell row (216) = 272,
+ * which is the old panel's height exactly — the existing arrangement of bar
+ * and cells is deliberately frozen there, while the GDEY075T7's extra rows
+ * (y = 272..480, 800x208) are reserved for the family calendar band landing in
+ * #26 (see also #24, which regenerates goldens against this same 272-row top).
+ * Deriving this from HEIGHT again would silently stretch every cell down into
+ * that reserved band with nothing to catch it — no test fails, no golden
+ * moves, the mistake just becomes the new normal. Leave it a literal.
+ */
+export const CELL_ROW_HEIGHT = 216;
 export const CELL_COUNT = 4;
-export const CELL_WIDTH = WIDTH / CELL_COUNT; // 198
+export const CELL_WIDTH = WIDTH / CELL_COUNT; // 200
 
 /** The four cells, in the order a Caregiver reads them left to right. */
 export type CellName = "weather" | "entree" | "school" | "sleeps";
